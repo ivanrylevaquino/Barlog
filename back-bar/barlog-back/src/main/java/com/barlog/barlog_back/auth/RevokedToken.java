@@ -36,3 +36,4 @@ public class RevokedToken {
     public Instant getExpiresAt() { return expiresAt; }
     public void setExpiresAt(Instant expiresAt) { this.expiresAt = expiresAt; }
 }
+

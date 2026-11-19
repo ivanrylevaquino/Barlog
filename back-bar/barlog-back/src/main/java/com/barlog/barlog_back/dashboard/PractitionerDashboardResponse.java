@@ -49,3 +49,4 @@ public class PractitionerDashboardResponse {
     public Instant getLastLogin() { return lastLogin; }
     public void setLastLogin(Instant lastLogin) { this.lastLogin = lastLogin; }
 }
+

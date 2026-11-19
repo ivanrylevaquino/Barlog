@@ -68,3 +68,4 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse("An unexpected server error occurred.", 500));
     }
 }
+

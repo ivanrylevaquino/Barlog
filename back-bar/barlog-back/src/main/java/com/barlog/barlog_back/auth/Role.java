@@ -4,3 +4,4 @@ package com.barlog.barlog_back.auth;
 public enum Role {
     PRACTITIONER
 }
+

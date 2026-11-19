@@ -26,3 +26,4 @@ public class DashboardController {
         return ResponseEntity.ok(dashboardService.getPractitionerDashboard(principal.getUserId()));
     }
 }
+

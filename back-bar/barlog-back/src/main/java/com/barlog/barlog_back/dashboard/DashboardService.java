@@ -26,3 +26,4 @@ public class DashboardService {
                 user.getRole(), user.getPreferredUnit(), user.getCreatedAt(), user.getLastLoginAt());
     }
 }
+

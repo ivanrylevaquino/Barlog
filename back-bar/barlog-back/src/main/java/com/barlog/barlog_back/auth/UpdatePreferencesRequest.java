@@ -14,3 +14,4 @@ public class UpdatePreferencesRequest {
     public PreferredUnit getPreferredUnit() { return preferredUnit; }
     public void setPreferredUnit(PreferredUnit preferredUnit) { this.preferredUnit = preferredUnit; }
 }
+

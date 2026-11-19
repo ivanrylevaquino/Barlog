@@ -47,3 +47,4 @@ public class AuthController {
         return ResponseEntity.ok(Collections.singletonMap("message", "Logged out successfully"));
     }
 }
+

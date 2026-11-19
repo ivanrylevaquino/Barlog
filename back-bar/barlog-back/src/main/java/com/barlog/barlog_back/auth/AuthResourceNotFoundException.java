@@ -6,3 +6,4 @@ public class AuthResourceNotFoundException extends RuntimeException {
         super(message);
     }
 }
+
