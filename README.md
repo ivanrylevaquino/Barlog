@@ -1,4 +1,3 @@
-@'
 # BarLog: Calisthenics Workout Logging and Form Analysis System
 
 IT342 Project Increment 1: User Accounts and Authentication.
