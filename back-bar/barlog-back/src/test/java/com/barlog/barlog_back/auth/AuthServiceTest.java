@@ -105,3 +105,4 @@ class AuthServiceTest {
         assertEquals(PreferredUnit.LB, result.getPreferredUnit());
     }
 }
+

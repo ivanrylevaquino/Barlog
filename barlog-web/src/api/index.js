@@ -35,7 +35,8 @@ const qs = (o) => {
 const real = {
   // FR-001..003: send the Google ID token, get back { token, user }
   loginWithGoogle: (idToken) => http('/auth/google', { method: 'POST', body: { idToken } }),
-  getMe: () => http('/users/me'),
+  getMe: () => http('/auth/me'),
+  logout: () => http('/auth/logout', { method: 'POST' }),
 
   // FR-006: [{ id, name, type: 'PUSH_UP'|'PULL_UP'|'SQUAT'|'DIP', category, analysisSupported }]
   getExercises: () => http('/exercises'),

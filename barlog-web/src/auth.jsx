@@ -21,7 +21,8 @@ export function AuthProvider({ children }) {
     setUser(user);
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try { await api.logout?.(); } catch { }
     localStorage.removeItem('barlog.token');
     localStorage.removeItem('barlog.activeSession');
     setUser(null);
