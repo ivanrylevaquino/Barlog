@@ -6,8 +6,19 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 
+import com.barlog.barlog_back.auth.ChangePasswordRequest;
+import com.barlog.barlog_back.auth.PasswordResetRequest;
+import com.barlog.barlog_back.auth.ResetPasswordRequest;
+import com.barlog.barlog_back.auth.UpdateProfileRequest;
+
 import java.util.Collections;
-import com.barlog.barlog_back.auth.PasswordLoginRequest;
+import java.util.Map;
+
+
+import java.util.Collections;
+import java.util.Map;
+
+
 
 @RestController
 @RequestMapping("/api/auth")
