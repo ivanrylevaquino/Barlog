@@ -42,14 +42,32 @@ public class AuthService {
     }
 
     @Transactional
-    public AuthResponse loginWithPassword(PasswordLoginRequest req) {
-        User user = userRepository.findByEmail(req.getEmail())
-                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + req.getEmail()));
-        if (passwordEncoder == null || !passwordEncoder.matches(req.getPassword(), user.getPasswordHash())) {
-            throw new BadCredentialsException("Invalid email or password");
+    public void requestPasswordReset(PasswordResetRequest request) {
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + request.getEmail()));
+        // generate token
+        String token = java.util.UUID.randomUUID().toString();
+        Instant expiresAt = Instant.now().plusSeconds(3600); // 1 hour
+        PasswordResetToken resetToken = new PasswordResetToken(token, user, expiresAt);
+        passwordResetTokenRepository.save(resetToken);
+        // TODO: send email with token (out of scope for now)
+    }
+
+    @Transactional
+    public AuthResponse resetPassword(String token, String newPassword) {
+        PasswordResetToken prt = passwordResetTokenRepository.findByToken(token)
+                .orElseThrow(() -> new AuthResourceNotFoundException("Invalid or expired token"));
+        if (prt.getExpiresAt().isBefore(Instant.now())) {
+            throw new AuthResourceNotFoundException("Expired token");
         }
-        String token = jwtTokenProvider.generateToken(user);
-        return new AuthResponse(token, UserDto.from(user));
+        User user = prt.getUser();
+        String hashed = passwordEncoder.encode(newPassword);
+        user.setPasswordHash(hashed);
+        userRepository.save(user);
+        // Invalidate token
+        passwordResetTokenRepository.delete(prt);
+        String jwt = jwtTokenProvider.generateToken(user);
+        return new AuthResponse(jwt, UserDto.from(user));
     }
 
 
@@ -87,14 +105,32 @@ public class AuthService {
         }
 
     @Transactional
-    public AuthResponse loginWithPassword(PasswordLoginRequest req) {
-        User user = userRepository.findByEmail(req.getEmail())
-                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + req.getEmail()));
-        if (passwordEncoder == null || !passwordEncoder.matches(req.getPassword(), user.getPasswordHash())) {
-            throw new BadCredentialsException("Invalid email or password");
+    public void requestPasswordReset(PasswordResetRequest request) {
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + request.getEmail()));
+        // generate token
+        String token = java.util.UUID.randomUUID().toString();
+        Instant expiresAt = Instant.now().plusSeconds(3600); // 1 hour
+        PasswordResetToken resetToken = new PasswordResetToken(token, user, expiresAt);
+        passwordResetTokenRepository.save(resetToken);
+        // TODO: send email with token (out of scope for now)
+    }
+
+    @Transactional
+    public AuthResponse resetPassword(String token, String newPassword) {
+        PasswordResetToken prt = passwordResetTokenRepository.findByToken(token)
+                .orElseThrow(() -> new AuthResourceNotFoundException("Invalid or expired token"));
+        if (prt.getExpiresAt().isBefore(Instant.now())) {
+            throw new AuthResourceNotFoundException("Expired token");
         }
-        String token = jwtTokenProvider.generateToken(user);
-        return new AuthResponse(token, UserDto.from(user));
+        User user = prt.getUser();
+        String hashed = passwordEncoder.encode(newPassword);
+        user.setPasswordHash(hashed);
+        userRepository.save(user);
+        // Invalidate token
+        passwordResetTokenRepository.delete(prt);
+        String jwt = jwtTokenProvider.generateToken(user);
+        return new AuthResponse(jwt, UserDto.from(user));
     }
 
         String token = jwtTokenProvider.generateToken(user);
@@ -102,14 +138,32 @@ public class AuthService {
     }
 
     @Transactional
-    public AuthResponse loginWithPassword(PasswordLoginRequest req) {
-        User user = userRepository.findByEmail(req.getEmail())
-                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + req.getEmail()));
-        if (passwordEncoder == null || !passwordEncoder.matches(req.getPassword(), user.getPasswordHash())) {
-            throw new BadCredentialsException("Invalid email or password");
+    public void requestPasswordReset(PasswordResetRequest request) {
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + request.getEmail()));
+        // generate token
+        String token = java.util.UUID.randomUUID().toString();
+        Instant expiresAt = Instant.now().plusSeconds(3600); // 1 hour
+        PasswordResetToken resetToken = new PasswordResetToken(token, user, expiresAt);
+        passwordResetTokenRepository.save(resetToken);
+        // TODO: send email with token (out of scope for now)
+    }
+
+    @Transactional
+    public AuthResponse resetPassword(String token, String newPassword) {
+        PasswordResetToken prt = passwordResetTokenRepository.findByToken(token)
+                .orElseThrow(() -> new AuthResourceNotFoundException("Invalid or expired token"));
+        if (prt.getExpiresAt().isBefore(Instant.now())) {
+            throw new AuthResourceNotFoundException("Expired token");
         }
-        String token = jwtTokenProvider.generateToken(user);
-        return new AuthResponse(token, UserDto.from(user));
+        User user = prt.getUser();
+        String hashed = passwordEncoder.encode(newPassword);
+        user.setPasswordHash(hashed);
+        userRepository.save(user);
+        // Invalidate token
+        passwordResetTokenRepository.delete(prt);
+        String jwt = jwtTokenProvider.generateToken(user);
+        return new AuthResponse(jwt, UserDto.from(user));
     }
 
     @Transactional(readOnly = true)
@@ -120,14 +174,32 @@ public class AuthService {
     }
 
     @Transactional
-    public AuthResponse loginWithPassword(PasswordLoginRequest req) {
-        User user = userRepository.findByEmail(req.getEmail())
-                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + req.getEmail()));
-        if (passwordEncoder == null || !passwordEncoder.matches(req.getPassword(), user.getPasswordHash())) {
-            throw new BadCredentialsException("Invalid email or password");
+    public void requestPasswordReset(PasswordResetRequest request) {
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + request.getEmail()));
+        // generate token
+        String token = java.util.UUID.randomUUID().toString();
+        Instant expiresAt = Instant.now().plusSeconds(3600); // 1 hour
+        PasswordResetToken resetToken = new PasswordResetToken(token, user, expiresAt);
+        passwordResetTokenRepository.save(resetToken);
+        // TODO: send email with token (out of scope for now)
+    }
+
+    @Transactional
+    public AuthResponse resetPassword(String token, String newPassword) {
+        PasswordResetToken prt = passwordResetTokenRepository.findByToken(token)
+                .orElseThrow(() -> new AuthResourceNotFoundException("Invalid or expired token"));
+        if (prt.getExpiresAt().isBefore(Instant.now())) {
+            throw new AuthResourceNotFoundException("Expired token");
         }
-        String token = jwtTokenProvider.generateToken(user);
-        return new AuthResponse(token, UserDto.from(user));
+        User user = prt.getUser();
+        String hashed = passwordEncoder.encode(newPassword);
+        user.setPasswordHash(hashed);
+        userRepository.save(user);
+        // Invalidate token
+        passwordResetTokenRepository.delete(prt);
+        String jwt = jwtTokenProvider.generateToken(user);
+        return new AuthResponse(jwt, UserDto.from(user));
     }
 
     @Transactional
@@ -140,14 +212,32 @@ public class AuthService {
     }
 
     @Transactional
-    public AuthResponse loginWithPassword(PasswordLoginRequest req) {
-        User user = userRepository.findByEmail(req.getEmail())
-                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + req.getEmail()));
-        if (passwordEncoder == null || !passwordEncoder.matches(req.getPassword(), user.getPasswordHash())) {
-            throw new BadCredentialsException("Invalid email or password");
+    public void requestPasswordReset(PasswordResetRequest request) {
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + request.getEmail()));
+        // generate token
+        String token = java.util.UUID.randomUUID().toString();
+        Instant expiresAt = Instant.now().plusSeconds(3600); // 1 hour
+        PasswordResetToken resetToken = new PasswordResetToken(token, user, expiresAt);
+        passwordResetTokenRepository.save(resetToken);
+        // TODO: send email with token (out of scope for now)
+    }
+
+    @Transactional
+    public AuthResponse resetPassword(String token, String newPassword) {
+        PasswordResetToken prt = passwordResetTokenRepository.findByToken(token)
+                .orElseThrow(() -> new AuthResourceNotFoundException("Invalid or expired token"));
+        if (prt.getExpiresAt().isBefore(Instant.now())) {
+            throw new AuthResourceNotFoundException("Expired token");
         }
-        String token = jwtTokenProvider.generateToken(user);
-        return new AuthResponse(token, UserDto.from(user));
+        User user = prt.getUser();
+        String hashed = passwordEncoder.encode(newPassword);
+        user.setPasswordHash(hashed);
+        userRepository.save(user);
+        // Invalidate token
+        passwordResetTokenRepository.delete(prt);
+        String jwt = jwtTokenProvider.generateToken(user);
+        return new AuthResponse(jwt, UserDto.from(user));
     }
 
     /** Revoke the JWT server-side so it cannot be reused (FR-004 logout). */
@@ -164,52 +254,124 @@ public class AuthService {
                 }
 
     @Transactional
-    public AuthResponse loginWithPassword(PasswordLoginRequest req) {
-        User user = userRepository.findByEmail(req.getEmail())
-                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + req.getEmail()));
-        if (passwordEncoder == null || !passwordEncoder.matches(req.getPassword(), user.getPasswordHash())) {
-            throw new BadCredentialsException("Invalid email or password");
+    public void requestPasswordReset(PasswordResetRequest request) {
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + request.getEmail()));
+        // generate token
+        String token = java.util.UUID.randomUUID().toString();
+        Instant expiresAt = Instant.now().plusSeconds(3600); // 1 hour
+        PasswordResetToken resetToken = new PasswordResetToken(token, user, expiresAt);
+        passwordResetTokenRepository.save(resetToken);
+        // TODO: send email with token (out of scope for now)
+    }
+
+    @Transactional
+    public AuthResponse resetPassword(String token, String newPassword) {
+        PasswordResetToken prt = passwordResetTokenRepository.findByToken(token)
+                .orElseThrow(() -> new AuthResourceNotFoundException("Invalid or expired token"));
+        if (prt.getExpiresAt().isBefore(Instant.now())) {
+            throw new AuthResourceNotFoundException("Expired token");
         }
-        String token = jwtTokenProvider.generateToken(user);
-        return new AuthResponse(token, UserDto.from(user));
+        User user = prt.getUser();
+        String hashed = passwordEncoder.encode(newPassword);
+        user.setPasswordHash(hashed);
+        userRepository.save(user);
+        // Invalidate token
+        passwordResetTokenRepository.delete(prt);
+        String jwt = jwtTokenProvider.generateToken(user);
+        return new AuthResponse(jwt, UserDto.from(user));
     }
             } catch (Exception e) {
                 log.warn("Could not parse token for logout: {}", e.getMessage());
             }
 
     @Transactional
-    public AuthResponse loginWithPassword(PasswordLoginRequest req) {
-        User user = userRepository.findByEmail(req.getEmail())
-                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + req.getEmail()));
-        if (passwordEncoder == null || !passwordEncoder.matches(req.getPassword(), user.getPasswordHash())) {
-            throw new BadCredentialsException("Invalid email or password");
+    public void requestPasswordReset(PasswordResetRequest request) {
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + request.getEmail()));
+        // generate token
+        String token = java.util.UUID.randomUUID().toString();
+        Instant expiresAt = Instant.now().plusSeconds(3600); // 1 hour
+        PasswordResetToken resetToken = new PasswordResetToken(token, user, expiresAt);
+        passwordResetTokenRepository.save(resetToken);
+        // TODO: send email with token (out of scope for now)
+    }
+
+    @Transactional
+    public AuthResponse resetPassword(String token, String newPassword) {
+        PasswordResetToken prt = passwordResetTokenRepository.findByToken(token)
+                .orElseThrow(() -> new AuthResourceNotFoundException("Invalid or expired token"));
+        if (prt.getExpiresAt().isBefore(Instant.now())) {
+            throw new AuthResourceNotFoundException("Expired token");
         }
-        String token = jwtTokenProvider.generateToken(user);
-        return new AuthResponse(token, UserDto.from(user));
+        User user = prt.getUser();
+        String hashed = passwordEncoder.encode(newPassword);
+        user.setPasswordHash(hashed);
+        userRepository.save(user);
+        // Invalidate token
+        passwordResetTokenRepository.delete(prt);
+        String jwt = jwtTokenProvider.generateToken(user);
+        return new AuthResponse(jwt, UserDto.from(user));
     }
         }
 
     @Transactional
-    public AuthResponse loginWithPassword(PasswordLoginRequest req) {
-        User user = userRepository.findByEmail(req.getEmail())
-                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + req.getEmail()));
-        if (passwordEncoder == null || !passwordEncoder.matches(req.getPassword(), user.getPasswordHash())) {
-            throw new BadCredentialsException("Invalid email or password");
+    public void requestPasswordReset(PasswordResetRequest request) {
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + request.getEmail()));
+        // generate token
+        String token = java.util.UUID.randomUUID().toString();
+        Instant expiresAt = Instant.now().plusSeconds(3600); // 1 hour
+        PasswordResetToken resetToken = new PasswordResetToken(token, user, expiresAt);
+        passwordResetTokenRepository.save(resetToken);
+        // TODO: send email with token (out of scope for now)
+    }
+
+    @Transactional
+    public AuthResponse resetPassword(String token, String newPassword) {
+        PasswordResetToken prt = passwordResetTokenRepository.findByToken(token)
+                .orElseThrow(() -> new AuthResourceNotFoundException("Invalid or expired token"));
+        if (prt.getExpiresAt().isBefore(Instant.now())) {
+            throw new AuthResourceNotFoundException("Expired token");
         }
-        String token = jwtTokenProvider.generateToken(user);
-        return new AuthResponse(token, UserDto.from(user));
+        User user = prt.getUser();
+        String hashed = passwordEncoder.encode(newPassword);
+        user.setPasswordHash(hashed);
+        userRepository.save(user);
+        // Invalidate token
+        passwordResetTokenRepository.delete(prt);
+        String jwt = jwtTokenProvider.generateToken(user);
+        return new AuthResponse(jwt, UserDto.from(user));
     }
         SecurityContextHolder.clearContext();
     }
 
     @Transactional
-    public AuthResponse loginWithPassword(PasswordLoginRequest req) {
-        User user = userRepository.findByEmail(req.getEmail())
-                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + req.getEmail()));
-        if (passwordEncoder == null || !passwordEncoder.matches(req.getPassword(), user.getPasswordHash())) {
-            throw new BadCredentialsException("Invalid email or password");
+    public void requestPasswordReset(PasswordResetRequest request) {
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + request.getEmail()));
+        // generate token
+        String token = java.util.UUID.randomUUID().toString();
+        Instant expiresAt = Instant.now().plusSeconds(3600); // 1 hour
+        PasswordResetToken resetToken = new PasswordResetToken(token, user, expiresAt);
+        passwordResetTokenRepository.save(resetToken);
+        // TODO: send email with token (out of scope for now)
+    }
+
+    @Transactional
+    public AuthResponse resetPassword(String token, String newPassword) {
+        PasswordResetToken prt = passwordResetTokenRepository.findByToken(token)
+                .orElseThrow(() -> new AuthResourceNotFoundException("Invalid or expired token"));
+        if (prt.getExpiresAt().isBefore(Instant.now())) {
+            throw new AuthResourceNotFoundException("Expired token");
         }
-        String token = jwtTokenProvider.generateToken(user);
-        return new AuthResponse(token, UserDto.from(user));
+        User user = prt.getUser();
+        String hashed = passwordEncoder.encode(newPassword);
+        user.setPasswordHash(hashed);
+        userRepository.save(user);
+        // Invalidate token
+        passwordResetTokenRepository.delete(prt);
+        String jwt = jwtTokenProvider.generateToken(user);
+        return new AuthResponse(jwt, UserDto.from(user));
     }
 }
