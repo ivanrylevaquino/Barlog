@@ -27,18 +27,30 @@ public class AuthService {
     private final GoogleTokenVerifierService googleTokenVerifierService;
     private final JwtTokenProvider jwtTokenProvider;
 
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final PasswordEncoder passwordEncoder;
 
     public AuthService(UserRepository userRepository,
                        RevokedTokenRepository revokedTokenRepository,
                        GoogleTokenVerifierService googleTokenVerifierService,
                        JwtTokenProvider jwtTokenProvider,
+                       PasswordResetTokenRepository passwordResetTokenRepository,
                        PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.revokedTokenRepository = revokedTokenRepository;
         this.googleTokenVerifierService = googleTokenVerifierService;
         this.jwtTokenProvider = jwtTokenProvider;
+        this.passwordResetTokenRepository = passwordResetTokenRepository;
         this.passwordEncoder = passwordEncoder;
+    }
+
+    // Backward‑compatible constructor (no reset‑token support)
+    public AuthService(UserRepository userRepository,
+                       RevokedTokenRepository revokedTokenRepository,
+                       GoogleTokenVerifierService googleTokenVerifierService,
+                       JwtTokenProvider jwtTokenProvider,
+                       PasswordEncoder passwordEncoder) {
+        this(userRepository, revokedTokenRepository, googleTokenVerifierService, jwtTokenProvider, null, passwordEncoder);
     }
 
     @Transactional
