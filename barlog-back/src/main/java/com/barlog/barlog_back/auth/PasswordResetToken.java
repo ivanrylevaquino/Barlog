@@ -33,4 +33,5 @@ public class PasswordResetToken {
     public String getToken() { return token; }
     public User getUser() { return user; }
     public Instant getExpiresAt() { return expiresAt; }
+    public boolean isExpired() { return Instant.now().isAfter(expiresAt); }
 }

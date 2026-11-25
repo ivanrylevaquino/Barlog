@@ -3,7 +3,6 @@ package com.barlog.barlog_back.auth;
 import jakarta.validation.constraints.NotBlank;
 
 public class ChangePasswordRequest {
-    @NotBlank
     private String currentPassword;
     @NotBlank
     private String newPassword;

@@ -5,28 +5,24 @@ import com.barlog.barlog_back.security.GoogleTokenVerifierService.GoogleUserInfo
 import com.barlog.barlog_back.security.JwtTokenProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.Instant;
 import java.util.Optional;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import com.barlog.barlog_back.auth.PasswordLoginRequest;
-
+import java.util.UUID;
 
 @Service
 public class AuthService {
-
     private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
     private final UserRepository userRepository;
     private final RevokedTokenRepository revokedTokenRepository;
     private final GoogleTokenVerifierService googleTokenVerifierService;
     private final JwtTokenProvider jwtTokenProvider;
-
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final PasswordEncoder passwordEncoder;
 
@@ -44,62 +40,24 @@ public class AuthService {
         this.passwordEncoder = passwordEncoder;
     }
 
-    // Backward‑compatible constructor (no reset‑token support)
-    public AuthService(UserRepository userRepository,
-                       RevokedTokenRepository revokedTokenRepository,
-                       GoogleTokenVerifierService googleTokenVerifierService,
-                       JwtTokenProvider jwtTokenProvider,
-                       PasswordEncoder passwordEncoder) {
-        this(userRepository, revokedTokenRepository, googleTokenVerifierService, jwtTokenProvider, null, passwordEncoder);
-    }
-
     @Transactional
-    public void requestPasswordReset(PasswordResetRequest request) {
+    public AuthResponse loginWithPassword(PasswordLoginRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + request.getEmail()));
-        // generate token
-        String token = java.util.UUID.randomUUID().toString();
-        Instant expiresAt = Instant.now().plusSeconds(3600); // 1 hour
-        PasswordResetToken resetToken = new PasswordResetToken(token, user, expiresAt);
-        passwordResetTokenRepository.save(resetToken);
-        // TODO: send email with token (out of scope for now)
-    }
-
-    @Transactional
-    public AuthResponse changePassword(UUID userId, String currentPassword, String newPassword) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + userId));
-        if (passwordEncoder == null || !passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
-            throw new BadCredentialsException("Current password is incorrect");
+                .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
+        if (!StringUtils.hasText(user.getPasswordHash())
+                || !passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+            throw new BadCredentialsException("Invalid email or password");
         }
-        String hashed = passwordEncoder.encode(newPassword);
-        user.setPasswordHash(hashed);
-        userRepository.save(user);
-        String jwt = jwtTokenProvider.generateToken(user);
-        return new AuthResponse(jwt, UserDto.from(user));
+        String token = jwtTokenProvider.generateToken(user);
+        return new AuthResponse(token, UserDto.from(user));
     }
 
-    @Transactional
-    public UserDto updateProfile(UUID userId, String displayName, String avatarUrl) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + userId));
-        if (displayName != null) user.setDisplayName(displayName);
-        if (avatarUrl != null) user.setAvatarUrl(avatarUrl);
-        return UserDto.from(userRepository.save(user));
-    }
-
-
-    /** Verify Google ID token, upsert user row, return signed JWT (FR-002, FR-003). */
-
-    /** Verify Google ID token, upsert user row, return signed JWT (FR-002, FR-003). */
     @Transactional
     public AuthResponse authenticateGoogle(String idToken) {
         GoogleUserInfo googleUser = googleTokenVerifierService.verify(idToken);
         Instant now = Instant.now();
-
         Optional<User> existing = userRepository.findByGoogleId(googleUser.getGoogleId());
         User user;
-
         if (existing.isPresent()) {
             user = existing.get();
             user.setLastLoginAt(now);
@@ -121,42 +79,6 @@ public class AuthService {
             user = userRepository.save(user);
             log.info("New practitioner registered: {} ({})", user.getEmail(), user.getUserId());
         }
-
-    @Transactional
-    public void requestPasswordReset(PasswordResetRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + request.getEmail()));
-        // generate token
-        String token = java.util.UUID.randomUUID().toString();
-        Instant expiresAt = Instant.now().plusSeconds(3600); // 1 hour
-        PasswordResetToken resetToken = new PasswordResetToken(token, user, expiresAt);
-        passwordResetTokenRepository.save(resetToken);
-        // TODO: send email with token (out of scope for now)
-    }
-
-    @Transactional
-    public AuthResponse changePassword(UUID userId, String currentPassword, String newPassword) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + userId));
-        if (passwordEncoder == null || !passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
-            throw new BadCredentialsException("Current password is incorrect");
-        }
-        String hashed = passwordEncoder.encode(newPassword);
-        user.setPasswordHash(hashed);
-        userRepository.save(user);
-        String jwt = jwtTokenProvider.generateToken(user);
-        return new AuthResponse(jwt, UserDto.from(user));
-    }
-
-    @Transactional
-    public UserDto updateProfile(UUID userId, String displayName, String avatarUrl) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + userId));
-        if (displayName != null) user.setDisplayName(displayName);
-        if (avatarUrl != null) user.setAvatarUrl(avatarUrl);
-        return UserDto.from(userRepository.save(user));
-    }
-
         String token = jwtTokenProvider.generateToken(user);
         return new AuthResponse(token, UserDto.from(user));
     }
@@ -165,65 +87,39 @@ public class AuthService {
     public void requestPasswordReset(PasswordResetRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + request.getEmail()));
-        // generate token
-        String token = java.util.UUID.randomUUID().toString();
-        Instant expiresAt = Instant.now().plusSeconds(3600); // 1 hour
+        String token = UUID.randomUUID().toString();
+        Instant expiresAt = Instant.now().plusSeconds(3600);
         PasswordResetToken resetToken = new PasswordResetToken(token, user, expiresAt);
         passwordResetTokenRepository.save(resetToken);
-        // TODO: send email with token (out of scope for now)
+        // TODO: send email with token
     }
 
     @Transactional
-    public AuthResponse changePassword(UUID userId, String currentPassword, String newPassword) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + userId));
-        if (passwordEncoder == null || !passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
-            throw new BadCredentialsException("Current password is incorrect");
+    public AuthResponse resetPassword(String token, String newPassword) {
+        PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(token)
+                .orElseThrow(() -> new AuthResourceNotFoundException("Reset token not found"));
+        if (resetToken.isExpired()) {
+            throw new IllegalStateException("Reset token expired");
         }
-        String hashed = passwordEncoder.encode(newPassword);
-        user.setPasswordHash(hashed);
+        User user = resetToken.getUser();
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
         userRepository.save(user);
+        passwordResetTokenRepository.delete(resetToken);
         String jwt = jwtTokenProvider.generateToken(user);
         return new AuthResponse(jwt, UserDto.from(user));
     }
 
     @Transactional
-    public UserDto updateProfile(UUID userId, String displayName, String avatarUrl) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + userId));
-        if (displayName != null) user.setDisplayName(displayName);
-        if (avatarUrl != null) user.setAvatarUrl(avatarUrl);
-        return UserDto.from(userRepository.save(user));
-    }
-
-    @Transactional(readOnly = true)
-    public UserDto getCurrentUser(UUID userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + userId));
-        return UserDto.from(user);
-    }
-
-    @Transactional
-    public void requestPasswordReset(PasswordResetRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + request.getEmail()));
-        // generate token
-        String token = java.util.UUID.randomUUID().toString();
-        Instant expiresAt = Instant.now().plusSeconds(3600); // 1 hour
-        PasswordResetToken resetToken = new PasswordResetToken(token, user, expiresAt);
-        passwordResetTokenRepository.save(resetToken);
-        // TODO: send email with token (out of scope for now)
-    }
-
-    @Transactional
     public AuthResponse changePassword(UUID userId, String currentPassword, String newPassword) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + userId));
-        if (passwordEncoder == null || !passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
-            throw new BadCredentialsException("Current password is incorrect");
+        if (StringUtils.hasText(user.getPasswordHash())) {
+            if (!StringUtils.hasText(currentPassword)
+                    || !passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+                throw new BadCredentialsException("Current password is incorrect");
+            }
         }
-        String hashed = passwordEncoder.encode(newPassword);
-        user.setPasswordHash(hashed);
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
         userRepository.save(user);
         String jwt = jwtTokenProvider.generateToken(user);
         return new AuthResponse(jwt, UserDto.from(user));
@@ -247,42 +143,13 @@ public class AuthService {
         return UserDto.from(userRepository.save(user));
     }
 
-    @Transactional
-    public void requestPasswordReset(PasswordResetRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + request.getEmail()));
-        // generate token
-        String token = java.util.UUID.randomUUID().toString();
-        Instant expiresAt = Instant.now().plusSeconds(3600); // 1 hour
-        PasswordResetToken resetToken = new PasswordResetToken(token, user, expiresAt);
-        passwordResetTokenRepository.save(resetToken);
-        // TODO: send email with token (out of scope for now)
-    }
-
-    @Transactional
-    public AuthResponse changePassword(UUID userId, String currentPassword, String newPassword) {
+    @Transactional(readOnly = true)
+    public UserDto getCurrentUser(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + userId));
-        if (passwordEncoder == null || !passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
-            throw new BadCredentialsException("Current password is incorrect");
-        }
-        String hashed = passwordEncoder.encode(newPassword);
-        user.setPasswordHash(hashed);
-        userRepository.save(user);
-        String jwt = jwtTokenProvider.generateToken(user);
-        return new AuthResponse(jwt, UserDto.from(user));
+        return UserDto.from(user);
     }
 
-    @Transactional
-    public UserDto updateProfile(UUID userId, String displayName, String avatarUrl) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + userId));
-        if (displayName != null) user.setDisplayName(displayName);
-        if (avatarUrl != null) user.setAvatarUrl(avatarUrl);
-        return UserDto.from(userRepository.save(user));
-    }
-
-    /** Revoke the JWT server-side so it cannot be reused (FR-004 logout). */
     @Transactional
     public void logout(String authHeader) {
         if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
@@ -294,150 +161,7 @@ public class AuthService {
                     revokedTokenRepository.save(new RevokedToken(jti, expiresAt));
                     log.info("Revoked token jti={}", jti);
                 }
-
-    @Transactional
-    public void requestPasswordReset(PasswordResetRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + request.getEmail()));
-        // generate token
-        String token = java.util.UUID.randomUUID().toString();
-        Instant expiresAt = Instant.now().plusSeconds(3600); // 1 hour
-        PasswordResetToken resetToken = new PasswordResetToken(token, user, expiresAt);
-        passwordResetTokenRepository.save(resetToken);
-        // TODO: send email with token (out of scope for now)
-    }
-
-    @Transactional
-    public AuthResponse changePassword(UUID userId, String currentPassword, String newPassword) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + userId));
-        if (passwordEncoder == null || !passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
-            throw new BadCredentialsException("Current password is incorrect");
+            } catch (Exception ignored) {}
         }
-        String hashed = passwordEncoder.encode(newPassword);
-        user.setPasswordHash(hashed);
-        userRepository.save(user);
-        String jwt = jwtTokenProvider.generateToken(user);
-        return new AuthResponse(jwt, UserDto.from(user));
-    }
-
-    @Transactional
-    public UserDto updateProfile(UUID userId, String displayName, String avatarUrl) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + userId));
-        if (displayName != null) user.setDisplayName(displayName);
-        if (avatarUrl != null) user.setAvatarUrl(avatarUrl);
-        return UserDto.from(userRepository.save(user));
-    }
-            } catch (Exception e) {
-                log.warn("Could not parse token for logout: {}", e.getMessage());
-            }
-
-    @Transactional
-    public void requestPasswordReset(PasswordResetRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + request.getEmail()));
-        // generate token
-        String token = java.util.UUID.randomUUID().toString();
-        Instant expiresAt = Instant.now().plusSeconds(3600); // 1 hour
-        PasswordResetToken resetToken = new PasswordResetToken(token, user, expiresAt);
-        passwordResetTokenRepository.save(resetToken);
-        // TODO: send email with token (out of scope for now)
-    }
-
-    @Transactional
-    public AuthResponse changePassword(UUID userId, String currentPassword, String newPassword) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + userId));
-        if (passwordEncoder == null || !passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
-            throw new BadCredentialsException("Current password is incorrect");
-        }
-        String hashed = passwordEncoder.encode(newPassword);
-        user.setPasswordHash(hashed);
-        userRepository.save(user);
-        String jwt = jwtTokenProvider.generateToken(user);
-        return new AuthResponse(jwt, UserDto.from(user));
-    }
-
-    @Transactional
-    public UserDto updateProfile(UUID userId, String displayName, String avatarUrl) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + userId));
-        if (displayName != null) user.setDisplayName(displayName);
-        if (avatarUrl != null) user.setAvatarUrl(avatarUrl);
-        return UserDto.from(userRepository.save(user));
-    }
-        }
-
-    @Transactional
-    public void requestPasswordReset(PasswordResetRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + request.getEmail()));
-        // generate token
-        String token = java.util.UUID.randomUUID().toString();
-        Instant expiresAt = Instant.now().plusSeconds(3600); // 1 hour
-        PasswordResetToken resetToken = new PasswordResetToken(token, user, expiresAt);
-        passwordResetTokenRepository.save(resetToken);
-        // TODO: send email with token (out of scope for now)
-    }
-
-    @Transactional
-    public AuthResponse changePassword(UUID userId, String currentPassword, String newPassword) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + userId));
-        if (passwordEncoder == null || !passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
-            throw new BadCredentialsException("Current password is incorrect");
-        }
-        String hashed = passwordEncoder.encode(newPassword);
-        user.setPasswordHash(hashed);
-        userRepository.save(user);
-        String jwt = jwtTokenProvider.generateToken(user);
-        return new AuthResponse(jwt, UserDto.from(user));
-    }
-
-    @Transactional
-    public UserDto updateProfile(UUID userId, String displayName, String avatarUrl) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + userId));
-        if (displayName != null) user.setDisplayName(displayName);
-        if (avatarUrl != null) user.setAvatarUrl(avatarUrl);
-        return UserDto.from(userRepository.save(user));
-    }
-        SecurityContextHolder.clearContext();
-    }
-
-    @Transactional
-    public void requestPasswordReset(PasswordResetRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + request.getEmail()));
-        // generate token
-        String token = java.util.UUID.randomUUID().toString();
-        Instant expiresAt = Instant.now().plusSeconds(3600); // 1 hour
-        PasswordResetToken resetToken = new PasswordResetToken(token, user, expiresAt);
-        passwordResetTokenRepository.save(resetToken);
-        // TODO: send email with token (out of scope for now)
-    }
-
-    @Transactional
-    public AuthResponse changePassword(UUID userId, String currentPassword, String newPassword) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + userId));
-        if (passwordEncoder == null || !passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
-            throw new BadCredentialsException("Current password is incorrect");
-        }
-        String hashed = passwordEncoder.encode(newPassword);
-        user.setPasswordHash(hashed);
-        userRepository.save(user);
-        String jwt = jwtTokenProvider.generateToken(user);
-        return new AuthResponse(jwt, UserDto.from(user));
-    }
-
-    @Transactional
-    public UserDto updateProfile(UUID userId, String displayName, String avatarUrl) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + userId));
-        if (displayName != null) user.setDisplayName(displayName);
-        if (avatarUrl != null) user.setAvatarUrl(avatarUrl);
-        return UserDto.from(userRepository.save(user));
     }
 }

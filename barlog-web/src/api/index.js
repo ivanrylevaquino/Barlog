@@ -19,7 +19,7 @@ async function http(path, { method = 'GET', body } = {}) {
     },
     body: body ? JSON.stringify(body) : undefined,
   });
-  if (res.status === 401) {
+  if (res.status === 401 && !path.startsWith('/auth/login') && !path.startsWith('/auth/me/password')) {
     localStorage.removeItem('barlog.token');
     window.location.href = '/login';
   }
@@ -33,9 +33,14 @@ const qs = (o) => {
 };
 
 const real = {
-  // FR-001..003: send the Google ID token, get back { token, user }
+  // FR-001..003: send the Google ID token or email/password, get back { token, user }
   loginWithGoogle: (idToken) => http('/auth/google', { method: 'POST', body: { idToken } }),
+  loginWithPassword: ({ email, password }) => http('/auth/login', { method: 'POST', body: { email, password } }),
   getMe: () => http('/auth/me'),
+  updateProfile: (data) => http('/auth/me', { method: 'PATCH', body: data }),
+  changePassword: ({ currentPassword, newPassword }) => http('/auth/me/password', { method: 'PATCH', body: { currentPassword, newPassword } }),
+  forgotPassword: (email) => http('/auth/forgot-password', { method: 'POST', body: { email } }),
+  resetPassword: ({ token, newPassword }) => http('/auth/reset-password', { method: 'POST', body: { token, newPassword } }),
   logout: () => http('/auth/logout', { method: 'POST' }),
 
   // FR-006: [{ id, name, type: 'PUSH_UP'|'PULL_UP'|'SQUAT'|'DIP', category, analysisSupported }]

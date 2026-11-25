@@ -21,6 +21,25 @@ export function AuthProvider({ children }) {
     setUser(user);
   };
 
+  const loginWithPassword = async (email, password) => {
+    const { token, user } = await api.loginWithPassword({ email, password });
+    localStorage.setItem('barlog.token', token);
+    setUser(user);
+  };
+
+  const updateProfile = async (data) => {
+    const updated = await api.updateProfile(data);
+    setUser(updated);
+    return updated;
+  };
+
+  const changePassword = async (currentPassword, newPassword) => {
+    const { token, user } = await api.changePassword({ currentPassword, newPassword });
+    if (token) localStorage.setItem('barlog.token', token);
+    if (user) setUser(user);
+    return user;
+  };
+
   const logout = async () => {
     try { await api.logout?.(); } catch { }
     localStorage.removeItem('barlog.token');
@@ -33,5 +52,9 @@ export function AuthProvider({ children }) {
     setUnitsState(u);
   };
 
-  return <AuthContext.Provider value={{ user, ready, login, logout, units, setUnits }}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ user, ready, login, loginWithPassword, updateProfile, changePassword, logout, units, setUnits }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }

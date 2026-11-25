@@ -11,6 +11,8 @@ client_secret_*.json
 # Java and Maven
 target/
 **/target/
+.m2/
+**/.m2/
 !.mvn/wrapper/maven-wrapper.jar
 *.class
 
