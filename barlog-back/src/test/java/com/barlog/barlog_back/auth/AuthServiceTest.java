@@ -9,6 +9,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -25,12 +26,20 @@ class AuthServiceTest {
     @Mock private RevokedTokenRepository revokedTokenRepository;
     @Mock private GoogleTokenVerifierService googleVerifierService;
     @Mock private JwtTokenProvider jwtTokenProvider;
+    @Mock private PasswordResetTokenRepository passwordResetTokenRepository;
+    @Mock private PasswordEncoder passwordEncoder;
 
     private AuthService authService;
 
     @BeforeEach
     void setUp() {
-        authService = new AuthService(userRepository, revokedTokenRepository, googleVerifierService, jwtTokenProvider);
+        authService = new AuthService(
+                userRepository,
+                revokedTokenRepository,
+                googleVerifierService,
+                jwtTokenProvider,
+                passwordResetTokenRepository,
+                passwordEncoder);
     }
 
     @Test

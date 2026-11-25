@@ -83,7 +83,7 @@ a.list-item:hover .title { color: var(--accent-ink); }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .field { display: flex; flex-direction: column; gap: 6px; }
 .field > label, .label { font-size: 0.875rem; font-weight: 600; color: var(--muted); }
-input[type='text'], input[type='search'], input[type='number'], select, textarea {
+input[type='text'], input[type='email'], input[type='password'], input[type='search'], input[type='number'], select, textarea {
   font: inherit; color: inherit; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; width: 100%;
 }
 textarea { resize: vertical; min-height: 72px; }
@@ -123,6 +123,7 @@ textarea { resize: vertical; min-height: 72px; }
 .drop.over, .drop:hover { border-color: var(--accent); background: var(--accent-soft); }
 .drop.has { border-style: solid; background: var(--accent-soft); color: var(--accent-ink); }
 .error { color: var(--bad); font-size: 0.9rem; }
+.success { color: var(--accent-ink); font-size: 0.9rem; }
 .empty { text-align: center; padding: 36px 16px; color: var(--muted); }
 .empty h3 { color: var(--ink); margin-bottom: 4px; }
 .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }

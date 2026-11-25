@@ -7,9 +7,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface UserRepository extends JpaRepository<User, UUID> {
-    Optional<User> findByGoogleId(String googleId);
-    Optional<User> findByEmail(String email);
-    boolean existsByGoogleId(String googleId);
+public interface PasswordResetTokenRepository extends JpaRepository<PasswordResetToken, UUID> {
+    Optional<PasswordResetToken> findByToken(String token);
+    void deleteByToken(String token);
 }
-

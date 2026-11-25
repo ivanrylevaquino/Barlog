@@ -14,11 +14,12 @@ public class UserDto {
     private PreferredUnit preferredUnit;
     private Instant createdAt;
     private Instant lastLoginAt;
+    private boolean hasPassword;
 
     public UserDto() {}
 
     public UserDto(UUID userId, String googleId, String email, String displayName, String avatarUrl,
-                   Role role, PreferredUnit preferredUnit, Instant createdAt, Instant lastLoginAt) {
+                   Role role, PreferredUnit preferredUnit, Instant createdAt, Instant lastLoginAt, boolean hasPassword) {
         this.userId = userId;
         this.googleId = googleId;
         this.email = email;
@@ -28,13 +29,15 @@ public class UserDto {
         this.preferredUnit = preferredUnit;
         this.createdAt = createdAt;
         this.lastLoginAt = lastLoginAt;
+        this.hasPassword = hasPassword;
     }
 
     public static UserDto from(User user) {
         if (user == null) return null;
         return new UserDto(user.getUserId(), user.getGoogleId(), user.getEmail(),
                 user.getDisplayName(), user.getAvatarUrl(), user.getRole(),
-                user.getPreferredUnit(), user.getCreatedAt(), user.getLastLoginAt());
+                user.getPreferredUnit(), user.getCreatedAt(), user.getLastLoginAt(),
+                user.getPasswordHash() != null && !user.getPasswordHash().isEmpty());
     }
 
     public UUID getUserId() { return userId; }
@@ -55,5 +58,7 @@ public class UserDto {
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
     public Instant getLastLoginAt() { return lastLoginAt; }
     public void setLastLoginAt(Instant lastLoginAt) { this.lastLoginAt = lastLoginAt; }
+    public boolean isHasPassword() { return hasPassword; }
+    public void setHasPassword(boolean hasPassword) { this.hasPassword = hasPassword; }
 }
 

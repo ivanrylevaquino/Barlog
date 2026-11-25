@@ -44,6 +44,9 @@ public class User {
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
 
+    @Column(name = "password_hash")
+    private String passwordHash;   // BCrypt hash; may be null for Google‑only accounts
+
     public User() {}
 
     public User(UUID userId, String googleId, String email, String displayName,
@@ -88,6 +91,10 @@ public class User {
     public Instant getLastLoginAt() { return lastLoginAt; }
     public void setLastLoginAt(Instant lastLoginAt) { this.lastLoginAt = lastLoginAt; }
 
+    public String getPasswordHash() { return passwordHash; }
+
+    public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
+
     // ── Builder ────────────────────────────────────────────────────────────
 
     public static Builder builder() { return new Builder(); }
@@ -102,6 +109,9 @@ public class User {
         private PreferredUnit preferredUnit = PreferredUnit.KG;
         private Instant createdAt;
         private Instant lastLoginAt;
+
+    @Column(name = "password_hash")
+    private String passwordHash;   // BCrypt hash; may be null for Google‑only accounts
 
         public Builder userId(UUID v) { userId = v; return this; }
         public Builder googleId(String v) { googleId = v; return this; }

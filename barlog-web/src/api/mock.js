@@ -81,13 +81,29 @@ const allSets = () => sessions.flatMap((s) => s.sets);
 const findSet = (id) => allSets().find((s) => s.id === id);
 
 // ---- api ----
+let mockUser = { id: 'u1', displayName: 'Ivan Aquino', email: 'ivan@example.com', avatarUrl: null, hasPassword: false };
+
 export async function loginWithGoogle() {
   await wait();
   return { token: 'mock-jwt', user: await getMe() };
 }
+export async function loginWithPassword({ email }) {
+  await wait();
+  return { token: 'mock-jwt', user: { ...mockUser, email: email || mockUser.email } };
+}
 export async function getMe() {
   await wait(100);
-  return { id: 'u1', displayName: 'Ivan Aquino', email: 'ivan@example.com', avatarUrl: null };
+  return { ...mockUser };
+}
+export async function updateProfile(data) {
+  await wait(150);
+  mockUser = { ...mockUser, ...data };
+  return { ...mockUser };
+}
+export async function changePassword() {
+  await wait(150);
+  mockUser = { ...mockUser, hasPassword: true };
+  return { token: 'mock-jwt', user: { ...mockUser } };
 }
 export async function getExercises() { await wait(100); return EXERCISES; }
 export async function listSessions() { await wait(); return sessions; }

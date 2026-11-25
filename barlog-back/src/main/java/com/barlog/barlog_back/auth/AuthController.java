@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Collections;
 import java.util.Map;
 
+
+
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
@@ -19,7 +21,14 @@ public class AuthController {
         this.authService = authService;
     }
 
-    /** POST /api/auth/google — exchange Google ID token for a BarLog JWT. */
+
+
+    /** POST /api/auth/login — password based login. */
+    @PostMapping("/login")
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody PasswordLoginRequest req) {
+        return ResponseEntity.ok(authService.loginWithPassword(req));
+    }
+
     @PostMapping("/google")
     public ResponseEntity<AuthResponse> authenticateGoogle(@Valid @RequestBody GoogleAuthRequest req) {
         return ResponseEntity.ok(authService.authenticateGoogle(req.getIdToken()));
@@ -29,6 +38,35 @@ public class AuthController {
     @GetMapping("/me")
     public ResponseEntity<UserDto> getMe(@AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(authService.getCurrentUser(principal.getUserId()));
+    }
+
+    /** PATCH /api/auth/me — update display name or avatar URL. */
+    @PatchMapping("/me")
+    public ResponseEntity<UserDto> updateProfile(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @Valid @RequestBody UpdateProfileRequest req) {
+        return ResponseEntity.ok(authService.updateProfile(principal.getUserId(), req.getDisplayName(), req.getAvatarUrl()));
+    }
+
+    /** PATCH /api/auth/me/password — set or change password. */
+    @PatchMapping("/me/password")
+    public ResponseEntity<AuthResponse> changePassword(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @Valid @RequestBody ChangePasswordRequest req) {
+        return ResponseEntity.ok(authService.changePassword(principal.getUserId(), req.getCurrentPassword(), req.getNewPassword()));
+    }
+
+    /** POST /api/auth/forgot-password — request a password reset token. */
+    @PostMapping("/forgot-password")
+    public ResponseEntity<Map<String, String>> forgotPassword(@Valid @RequestBody PasswordResetRequest req) {
+        authService.requestPasswordReset(req);
+        return ResponseEntity.ok(Collections.singletonMap("message", "If that email exists, a reset link has been sent."));
+    }
+
+    /** POST /api/auth/reset-password — apply a password reset token. */
+    @PostMapping("/reset-password")
+    public ResponseEntity<AuthResponse> resetPassword(@Valid @RequestBody ResetPasswordRequest req) {
+        return ResponseEntity.ok(authService.resetPassword(req.getToken(), req.getNewPassword()));
     }
 
     /** PATCH /api/auth/me/preferences — toggle preferred weight unit (KG / LB). */

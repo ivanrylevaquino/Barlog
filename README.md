@@ -1,82 +1,93 @@
 # BarLog: Calisthenics Workout Logging and Form Analysis System
 
-IT342 Project Increment 1: User Accounts and Authentication.
+IT342 Project — User Accounts, Authentication, and Profile Management (Increments 1 & 2).
 
 ## Tech Stack
-- Frontend: React (Vite), React Router, @react-oauth/google
-- Backend: Spring Boot 3.3, Spring Security, Spring Data JPA, Java 17+
-- Database: PostgreSQL (hosted on Supabase)
-- Auth: Google OAuth 2.0 (ID token) and JWT (HS256, 24h)
+- **Frontend:** React (Vite), React Router, `@react-oauth/google`, Recharts, Lucide React
+- **Backend:** Spring Boot 3.3, Spring Security, Spring Data JPA, Java 17+
+- **Database:** PostgreSQL (hosted on Supabase; H2 in-memory for `test` profile)
+- **Auth:** Google OAuth 2.0 (ID token), Email + Password (BCrypt), and JWT (HS256, 24h)
 
-## Authentication Design (per SRS)
-- Passwordless Google sign-in (FR-001, NFR-004). The system never asks for or stores passwords, so there is no password hashing.
-- First login creates a user record (google_id, email, display_name, avatar_url) with role PRACTITIONER, the only role in the SRS (FR-002).
-- The backend verifies the Google ID token, then issues a signed JWT (FR-003).
-- Logout revokes the token server-side (revoked_tokens table), so reusing it returns 401 (FR-004).
-- Role-based access: /api/dashboard/practitioner requires ROLE_PRACTITIONER. The frontend uses a protected route guard and the backend enforces the role.
+## Authentication & Account Features
+- **Google OAuth 2.0:** First Google sign-in creates a user record (`google_id`, `email`, `display_name`, `avatar_url`) with role `PRACTITIONER` and verifies the Google ID token on the backend before issuing a signed JWT.
+- **Email & Password Login:** Users can sign in with email and password (`POST /api/auth/login`). Google-authenticated users can set a password from their Profile page to enable email/password login.
+- **Profile & Password Management:** Authenticated users can update their display name (`PATCH /api/auth/me`), set or change their password (`PATCH /api/auth/me/password`), and toggle preferred weight units (`KG` / `LB` via `PATCH /api/auth/me/preferences`).
+- **Password Reset:** Supports requesting and applying reset tokens (`POST /api/auth/forgot-password`, `POST /api/auth/reset-password`).
+- **Server-Side Logout:** Revokes the active JWT in `revoked_tokens`, so reusing a logged-out token returns `401`.
+- **Role-Based Access:** `/api/dashboard/practitioner` requires `ROLE_PRACTITIONER`; all `/api/**` routes (except auth login/reset endpoints and `/error`) require authentication.
 
 ## Prerequisites
-- JDK 17 or newer
+- JDK 17 or newer (note: if running tests with Mockito on Java 25+, pass `-DargLine="-Dnet.bytebuddy.experimental=true"`)
 - Node.js 18 or newer
-- A PostgreSQL database (Supabase or local)
-- A Google OAuth Web Client ID
+- A PostgreSQL database (Supabase Session Pooler or local PostgreSQL)
+- A Google OAuth 2.0 Web Client ID
 
-## Setup
+## Setup & Launch
 
 ### 1. Google OAuth
-In Google Cloud Console create an OAuth client (Web application) with authorized JavaScript origin http://localhost:5173. Add your Google account as a Test user on the consent screen. Only the Client ID is needed; the client secret is not used.
+In Google Cloud Console, create an OAuth 2.0 Client ID (**Web application**) with authorized JavaScript origin `http://localhost:5173`. Add your Google account as a test user on the consent screen.
 
-### 2. Backend (back-bar/barlog-back)
-Set these environment variables (PowerShell example):
+### 2. Backend (`barlog-back`)
+Configure your database, Google Client ID, and JWT secret either via environment variables (`SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`, `GOOGLE_CLIENT_ID`, `JWT_SECRET`) or directly in `barlog-back/src/main/resources/application.properties` (do not commit real secrets):
 
-    $env:SPRING_DATASOURCE_URL="jdbc:postgresql://<host>:5432/postgres?sslmode=require"
-    $env:SPRING_DATASOURCE_USERNAME="<db user>"
-    $env:SPRING_DATASOURCE_PASSWORD="<db password>"
-    $env:GOOGLE_CLIENT_ID="<your client id>.apps.googleusercontent.com"
-    $env:JWT_SECRET="<random base64 string, 32+ bytes>"
+```bash
+export SPRING_DATASOURCE_URL="jdbc:postgresql://<host>:5432/postgres?sslmode=require"
+export SPRING_DATASOURCE_USERNAME="postgres.<project-ref>"
+export SPRING_DATASOURCE_PASSWORD="<db-password>"
+export GOOGLE_CLIENT_ID="<your-client-id>.apps.googleusercontent.com"
+export JWT_SECRET="$(openssl rand -base64 32)"
+```
 
-Generate a JWT secret with:
+Run the backend (tables are created/updated automatically via Hibernate `ddl-auto=update`):
 
-    [Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Maximum 256 }))
+```bash
+cd barlog-back
+./mvnw spring-boot:run
+```
 
-Run the backend (tables are created automatically on first start):
+*(On Windows PowerShell, use `.\mvnw.cmd spring-boot:run`.)*
 
-    cd back-bar/barlog-back
-    .\mvnw.cmd spring-boot:run
+To run the backend test suite (uses H2 in-memory `test` profile):
 
-The API runs at http://localhost:8080.
+```bash
+cd barlog-back
+./mvnw clean test
+```
 
-### 3. Frontend (barlog-web)
-Create barlog-web/.env (see .env.example):
+The API runs at `http://localhost:8080`.
 
-    VITE_GOOGLE_CLIENT_ID=<your client id>.apps.googleusercontent.com
-    VITE_API_URL=http://localhost:8080/api
-    VITE_USE_MOCK=false
+### 3. Frontend (`barlog-web`)
+Create `barlog-web/.env` (see `barlog-web/.env.example`):
 
-Run:
+```env
+VITE_API_URL=http://localhost:8080/api
+VITE_USE_MOCK=false
+VITE_GOOGLE_CLIENT_ID=<your-client-id>.apps.googleusercontent.com
+```
 
-    cd barlog-web
-    npm install
-    npm run dev
+Run the dev server:
 
-Open http://localhost:5173.
+```bash
+cd barlog-web
+npm install
+npm run dev
+```
+
+Open `http://localhost:5173`.
 
 ## API Endpoints
-| Method | Path | Description |
-|---|---|---|
-| POST | /api/auth/google | Verify Google ID token, create or find user, return JWT and user |
-| GET | /api/auth/me | Current user profile |
-| PATCH | /api/auth/me/preferences | Update measurement units (kg/lb) |
-| POST | /api/auth/logout | Revoke the current JWT |
-| GET | /api/dashboard/practitioner | Practitioner dashboard (role protected) |
-
-## Testing the Flow
-1. Sign in with Google and you land on the dashboard; a row appears in the users table.
-2. Refresh the page and the session persists.
-3. Log out and you return to /login; a row appears in revoked_tokens.
-4. Open /dashboard while logged out and you are redirected to /login.
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| `POST` | `/api/auth/google` | Public | Verify Google ID token, create or find user, return JWT and user |
+| `POST` | `/api/auth/login` | Public | Authenticate with email and password, return JWT and user |
+| `POST` | `/api/auth/forgot-password` | Public | Generate a password reset token |
+| `POST` | `/api/auth/reset-password` | Public | Reset password using a valid reset token |
+| `GET` | `/api/auth/me` | Bearer JWT | Get current user profile |
+| `PATCH` | `/api/auth/me` | Bearer JWT | Update display name / avatar URL |
+| `PATCH` | `/api/auth/me/password` | Bearer JWT | Set a new password or change existing password |
+| `PATCH` | `/api/auth/me/preferences` | Bearer JWT | Update preferred weight unit (`KG` / `LB`) |
+| `POST` | `/api/auth/logout` | Bearer JWT | Revoke the current JWT |
+| `GET` | `/api/dashboard/practitioner` | `ROLE_PRACTITIONER` | Practitioner dashboard |
 
 ## Security Notes
-- Secrets are read from environment variables and are never committed. .env files are gitignored.
-- Other increments (workout logging, video upload, form analysis, analytics) are not part of this increment.
-'@ | Set-Content README.md
+- `.env` files, `barlog-back/.m2/`, and `node_modules/` are gitignored. Never commit database passwords, JWT secrets, or real `application.properties` credentials.

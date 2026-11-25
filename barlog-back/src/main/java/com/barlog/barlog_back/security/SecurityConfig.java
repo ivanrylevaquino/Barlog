@@ -24,6 +24,9 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -42,7 +45,12 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .cors(c -> c.configurationSource(corsSource()))
             .csrf(AbstractHttpConfigurer::disable)
@@ -55,7 +63,7 @@ public class SecurityConfig {
             )
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/auth/google").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/auth/google", "/api/auth/login", "/api/auth/forgot-password", "/api/auth/reset-password").permitAll()
                 .requestMatchers("/error").permitAll()
                 .requestMatchers("/api/dashboard/practitioner").hasRole("PRACTITIONER")
                 .requestMatchers("/api/**").authenticated()
