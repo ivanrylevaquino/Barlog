@@ -12,7 +12,10 @@ import org.springframework.util.StringUtils;
 
 import java.time.Instant;
 import java.util.Optional;
-import java.util.UUID;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import com.barlog.barlog_back.auth.PasswordLoginRequest;
+
 
 @Service
 public class AuthService {
@@ -24,15 +27,33 @@ public class AuthService {
     private final GoogleTokenVerifierService googleTokenVerifierService;
     private final JwtTokenProvider jwtTokenProvider;
 
+    private final PasswordEncoder passwordEncoder;
+
     public AuthService(UserRepository userRepository,
                        RevokedTokenRepository revokedTokenRepository,
                        GoogleTokenVerifierService googleTokenVerifierService,
-                       JwtTokenProvider jwtTokenProvider) {
+                       JwtTokenProvider jwtTokenProvider,
+                       PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.revokedTokenRepository = revokedTokenRepository;
         this.googleTokenVerifierService = googleTokenVerifierService;
         this.jwtTokenProvider = jwtTokenProvider;
+        this.passwordEncoder = passwordEncoder;
     }
+
+    @Transactional
+    public AuthResponse loginWithPassword(PasswordLoginRequest req) {
+        User user = userRepository.findByEmail(req.getEmail())
+                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + req.getEmail()));
+        if (passwordEncoder == null || !passwordEncoder.matches(req.getPassword(), user.getPasswordHash())) {
+            throw new BadCredentialsException("Invalid email or password");
+        }
+        String token = jwtTokenProvider.generateToken(user);
+        return new AuthResponse(token, UserDto.from(user));
+    }
+
+
+    /** Verify Google ID token, upsert user row, return signed JWT (FR-002, FR-003). */
 
     /** Verify Google ID token, upsert user row, return signed JWT (FR-002, FR-003). */
     @Transactional
@@ -65,6 +86,28 @@ public class AuthService {
             log.info("New practitioner registered: {} ({})", user.getEmail(), user.getUserId());
         }
 
+    @Transactional
+    public AuthResponse loginWithPassword(PasswordLoginRequest req) {
+        User user = userRepository.findByEmail(req.getEmail())
+                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + req.getEmail()));
+        if (passwordEncoder == null || !passwordEncoder.matches(req.getPassword(), user.getPasswordHash())) {
+            throw new BadCredentialsException("Invalid email or password");
+        }
+        String token = jwtTokenProvider.generateToken(user);
+        return new AuthResponse(token, UserDto.from(user));
+    }
+
+        String token = jwtTokenProvider.generateToken(user);
+        return new AuthResponse(token, UserDto.from(user));
+    }
+
+    @Transactional
+    public AuthResponse loginWithPassword(PasswordLoginRequest req) {
+        User user = userRepository.findByEmail(req.getEmail())
+                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + req.getEmail()));
+        if (passwordEncoder == null || !passwordEncoder.matches(req.getPassword(), user.getPasswordHash())) {
+            throw new BadCredentialsException("Invalid email or password");
+        }
         String token = jwtTokenProvider.generateToken(user);
         return new AuthResponse(token, UserDto.from(user));
     }
@@ -77,12 +120,34 @@ public class AuthService {
     }
 
     @Transactional
+    public AuthResponse loginWithPassword(PasswordLoginRequest req) {
+        User user = userRepository.findByEmail(req.getEmail())
+                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + req.getEmail()));
+        if (passwordEncoder == null || !passwordEncoder.matches(req.getPassword(), user.getPasswordHash())) {
+            throw new BadCredentialsException("Invalid email or password");
+        }
+        String token = jwtTokenProvider.generateToken(user);
+        return new AuthResponse(token, UserDto.from(user));
+    }
+
+    @Transactional
     public UserDto updatePreferences(UUID userId, PreferredUnit unit) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + userId));
         user.setPreferredUnit(unit);
         log.info("Updated preferredUnit to {} for user {}", unit, userId);
         return UserDto.from(userRepository.save(user));
+    }
+
+    @Transactional
+    public AuthResponse loginWithPassword(PasswordLoginRequest req) {
+        User user = userRepository.findByEmail(req.getEmail())
+                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + req.getEmail()));
+        if (passwordEncoder == null || !passwordEncoder.matches(req.getPassword(), user.getPasswordHash())) {
+            throw new BadCredentialsException("Invalid email or password");
+        }
+        String token = jwtTokenProvider.generateToken(user);
+        return new AuthResponse(token, UserDto.from(user));
     }
 
     /** Revoke the JWT server-side so it cannot be reused (FR-004 logout). */
@@ -97,10 +162,54 @@ public class AuthService {
                     revokedTokenRepository.save(new RevokedToken(jti, expiresAt));
                     log.info("Revoked token jti={}", jti);
                 }
+
+    @Transactional
+    public AuthResponse loginWithPassword(PasswordLoginRequest req) {
+        User user = userRepository.findByEmail(req.getEmail())
+                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + req.getEmail()));
+        if (passwordEncoder == null || !passwordEncoder.matches(req.getPassword(), user.getPasswordHash())) {
+            throw new BadCredentialsException("Invalid email or password");
+        }
+        String token = jwtTokenProvider.generateToken(user);
+        return new AuthResponse(token, UserDto.from(user));
+    }
             } catch (Exception e) {
                 log.warn("Could not parse token for logout: {}", e.getMessage());
             }
+
+    @Transactional
+    public AuthResponse loginWithPassword(PasswordLoginRequest req) {
+        User user = userRepository.findByEmail(req.getEmail())
+                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + req.getEmail()));
+        if (passwordEncoder == null || !passwordEncoder.matches(req.getPassword(), user.getPasswordHash())) {
+            throw new BadCredentialsException("Invalid email or password");
         }
+        String token = jwtTokenProvider.generateToken(user);
+        return new AuthResponse(token, UserDto.from(user));
+    }
+        }
+
+    @Transactional
+    public AuthResponse loginWithPassword(PasswordLoginRequest req) {
+        User user = userRepository.findByEmail(req.getEmail())
+                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + req.getEmail()));
+        if (passwordEncoder == null || !passwordEncoder.matches(req.getPassword(), user.getPasswordHash())) {
+            throw new BadCredentialsException("Invalid email or password");
+        }
+        String token = jwtTokenProvider.generateToken(user);
+        return new AuthResponse(token, UserDto.from(user));
+    }
         SecurityContextHolder.clearContext();
+    }
+
+    @Transactional
+    public AuthResponse loginWithPassword(PasswordLoginRequest req) {
+        User user = userRepository.findByEmail(req.getEmail())
+                .orElseThrow(() -> new AuthResourceNotFoundException("User not found: " + req.getEmail()));
+        if (passwordEncoder == null || !passwordEncoder.matches(req.getPassword(), user.getPasswordHash())) {
+            throw new BadCredentialsException("Invalid email or password");
+        }
+        String token = jwtTokenProvider.generateToken(user);
+        return new AuthResponse(token, UserDto.from(user));
     }
 }

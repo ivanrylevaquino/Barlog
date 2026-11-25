@@ -4,10 +4,10 @@ import com.barlog.barlog_back.security.UserPrincipal;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
+
 
 import java.util.Collections;
-import java.util.Map;
+import com.barlog.barlog_back.auth.PasswordLoginRequest;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -19,7 +19,14 @@ public class AuthController {
         this.authService = authService;
     }
 
-    /** POST /api/auth/google — exchange Google ID token for a BarLog JWT. */
+
+
+    /** POST /api/auth/login — password based login. */
+    @PostMapping("/login")
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody PasswordLoginRequest req) {
+        return ResponseEntity.ok(authService.loginWithPassword(req));
+    }
+
     @PostMapping("/google")
     public ResponseEntity<AuthResponse> authenticateGoogle(@Valid @RequestBody GoogleAuthRequest req) {
         return ResponseEntity.ok(authService.authenticateGoogle(req.getIdToken()));
