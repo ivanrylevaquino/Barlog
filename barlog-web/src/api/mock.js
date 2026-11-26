@@ -105,6 +105,37 @@ export async function changePassword() {
   mockUser = { ...mockUser, hasPassword: true };
   return { token: 'mock-jwt', user: { ...mockUser } };
 }
+export const videoUploadEnabled = true;
+export async function getActiveSession() {
+  await wait(100);
+  return sessions.find((s) => !s.endedAt) || null;
+}
+export async function updateSession(id, { notes }) {
+  await wait(100);
+  const s = sessions.find((x) => x.id === id);
+  s.notes = notes || '';
+  return s;
+}
+export async function deleteSession(id) {
+  await wait(100);
+  sessions = sessions.filter((x) => x.id !== id);
+  return null;
+}
+export async function updateSet(id, data) {
+  await wait(100);
+  const set = findSet(id);
+  Object.assign(set, { reps: data.reps, progression: data.progression, weightKg: data.weightKg || 0, rpe: data.rpe, notes: data.notes || '' });
+  return { ...set };
+}
+export async function deleteSet(id) {
+  await wait(100);
+  const s = sessions.find((x) => x.sets.some((y) => y.id === id));
+  const gone = s.sets.find((y) => y.id === id);
+  s.sets = s.sets.filter((y) => y.id !== id);
+  let n = 1;
+  s.sets.forEach((y) => { if (y.exerciseId === gone.exerciseId) y.setNumber = n++; });
+  return null;
+}
 export async function getExercises() { await wait(100); return EXERCISES; }
 export async function listSessions() { await wait(); return sessions; }
 export async function getSession(id) {

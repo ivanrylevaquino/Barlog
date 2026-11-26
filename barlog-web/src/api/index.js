@@ -23,7 +23,14 @@ async function http(path, { method = 'GET', body } = {}) {
     localStorage.removeItem('barlog.token');
     window.location.href = '/login';
   }
-  if (!res.ok) throw new Error((await res.text()) || `Request failed (${res.status})`);
+  if (!res.ok) {
+    const text = await res.text();
+    let message = text;
+    try { message = JSON.parse(text).message || text; } catch { /* plain-text body */ }
+    const err = new Error(message || `Request failed (${res.status})`);
+    err.status = res.status;
+    throw err;
+  }
   return res.status === 204 ? null : res.json();
 }
 
@@ -48,13 +55,21 @@ const real = {
 
   // FR-005
   listSessions: () => http('/sessions'),
+  getActiveSession: () => http('/sessions/active'), // null (204) when no workout is in progress
   getSession: (id) => http(`/sessions/${id}`),
   createSession: ({ notes }) => http('/sessions', { method: 'POST', body: { notes } }),
+  updateSession: (id, { notes }) => http(`/sessions/${id}`, { method: 'PATCH', body: { notes } }),
   finishSession: (id) => http(`/sessions/${id}/finish`, { method: 'PATCH' }),
+  deleteSession: (id) => http(`/sessions/${id}`, { method: 'DELETE' }),
 
   // FR-007..009: { exerciseId, progression, reps, weightKg, rpe, notes }
   addSet: (sessionId, set) => http(`/sessions/${sessionId}/sets`, { method: 'POST', body: set }),
   getSet: (setId) => http(`/sets/${setId}`),
+  updateSet: (setId, set) => http(`/sets/${setId}`, { method: 'PATCH', body: set }),
+  deleteSet: (setId) => http(`/sets/${setId}`, { method: 'DELETE' }),
+
+  // Video upload (FR-010..014) has no backend yet; the UI hides the upload box while this is false.
+  videoUploadEnabled: false,
 
   // FR-013/014: 1) get presigned PUT  2) PUT file straight to S3  3) tell backend it landed
   async uploadVideo(setId, file) {

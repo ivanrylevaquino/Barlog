@@ -1,0 +1,76 @@
+package com.barlog.barlog_back.workout;
+
+import jakarta.persistence.*;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.UUID;
+
+/** One logged set inside a workout session (FR-007, FR-008, FR-009). */
+@Entity
+@Table(name = "exercise_sets")
+public class ExerciseSet {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "set_id", updatable = false, nullable = false)
+    private UUID setId;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "session_id", nullable = false)
+    private WorkoutSession session;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "exercise_id", nullable = false)
+    private Exercise exercise;
+
+    @Column(name = "set_number", nullable = false)
+    private int setNumber;
+
+    @Column(name = "reps", nullable = false)
+    private int reps;
+
+    @Column(name = "progression", nullable = false, length = 60)
+    private String progression;
+
+    @Column(name = "weight_kg", nullable = false, precision = 6, scale = 2)
+    private BigDecimal weightKg = BigDecimal.ZERO;
+
+    @Column(name = "rpe")
+    private Integer rpe;
+
+    @Column(name = "notes", length = 500)
+    private String notes;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private Instant createdAt;
+
+    public ExerciseSet() {}
+
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) createdAt = Instant.now();
+        if (weightKg == null) weightKg = BigDecimal.ZERO;
+    }
+
+    public UUID getSetId() { return setId; }
+    public void setSetId(UUID setId) { this.setId = setId; }
+    public WorkoutSession getSession() { return session; }
+    public void setSession(WorkoutSession session) { this.session = session; }
+    public Exercise getExercise() { return exercise; }
+    public void setExercise(Exercise exercise) { this.exercise = exercise; }
+    public int getSetNumber() { return setNumber; }
+    public void setSetNumber(int setNumber) { this.setNumber = setNumber; }
+    public int getReps() { return reps; }
+    public void setReps(int reps) { this.reps = reps; }
+    public String getProgression() { return progression; }
+    public void setProgression(String progression) { this.progression = progression; }
+    public BigDecimal getWeightKg() { return weightKg; }
+    public void setWeightKg(BigDecimal weightKg) { this.weightKg = weightKg; }
+    public Integer getRpe() { return rpe; }
+    public void setRpe(Integer rpe) { this.rpe = rpe; }
+    public String getNotes() { return notes; }
+    public void setNotes(String notes) { this.notes = notes; }
+    public Instant getCreatedAt() { return createdAt; }
+    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+}

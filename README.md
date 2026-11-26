@@ -1,6 +1,6 @@
 # BarLog: Calisthenics Workout Logging and Form Analysis System
 
-IT342 Project — User Accounts, Authentication, and Profile Management (Increments 1 & 2).
+IT342 Project — User Accounts and Authentication (Increments 1 & 2) and Workout Logging, History and Progress Analytics (Increment 3).
 
 ## Tech Stack
 - **Frontend:** React (Vite), React Router, `@react-oauth/google`, Recharts, Lucide React
@@ -88,6 +88,21 @@ Open `http://localhost:5173`.
 | `PATCH` | `/api/auth/me/preferences` | Bearer JWT | Update preferred weight unit (`KG` / `LB`) |
 | `POST` | `/api/auth/logout` | Bearer JWT | Revoke the current JWT |
 | `GET` | `/api/dashboard/practitioner` | `ROLE_PRACTITIONER` | Practitioner dashboard |
+| `GET` | `/api/exercises` | `ROLE_PRACTITIONER` | Predefined exercise catalogue with progression stages (FR-006) |
+| `GET` | `/api/sessions` | `ROLE_PRACTITIONER` | List own workout sessions with sets, newest first (FR-025) |
+| `GET` | `/api/sessions/active` | `ROLE_PRACTITIONER` | The unfinished session, or `204` if none |
+| `POST` | `/api/sessions` | `ROLE_PRACTITIONER` | Start a workout session (FR-005) |
+| `GET` | `/api/sessions/{id}` | `ROLE_PRACTITIONER` | Get one session with its sets |
+| `PATCH` | `/api/sessions/{id}` | `ROLE_PRACTITIONER` | Edit session notes |
+| `PATCH` | `/api/sessions/{id}/finish` | `ROLE_PRACTITIONER` | Conclude a session (needs at least one set) |
+| `DELETE` | `/api/sessions/{id}` | `ROLE_PRACTITIONER` | Delete a session and its sets |
+| `POST` | `/api/sessions/{id}/sets` | `ROLE_PRACTITIONER` | Log a set: exercise, progression, reps, added kg, RPE, notes (FR-007..009) |
+| `GET` | `/api/sets/{id}` | `ROLE_PRACTITIONER` | Get one set |
+| `PATCH` | `/api/sets/{id}` | `ROLE_PRACTITIONER` | Edit a set |
+| `DELETE` | `/api/sets/{id}` | `ROLE_PRACTITIONER` | Delete a set (remaining sets are renumbered) |
+| `GET` | `/api/progress?range=7\|30\|90\|all&exerciseId=` | `ROLE_PRACTITIONER` | Volume, max reps and session count per day (FR-021..023) |
+
+All workout endpoints are scoped to the signed-in user; another user's session or set id returns `404`.
 
 ## Security Notes
 - `.env` files, `barlog-back/.m2/`, and `node_modules/` are gitignored. Never commit database passwords, JWT secrets, or real `application.properties` credentials.

@@ -1,12 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Minus, Plus } from 'lucide-react';
+import { Minus, Plus, Trash2 } from 'lucide-react';
 import { api } from '../api';
 import { useAuth } from '../auth.jsx';
 import { progressionsFor, toDisplayWeight, toKg, validateVideo, fmtLong } from '../utils';
 import { PageHead, VideoDrop, StatusPill } from '../components/ui.jsx';
-
-const KEY = 'barlog.activeSession';
 
 export default function Workout() {
   const nav = useNavigate();
@@ -30,45 +28,67 @@ export default function Workout() {
 
   useEffect(() => {
     (async () => {
-      const list = await api.getExercises();
-      setExercises(list);
-      setExId(list[0]?.id);
-      setProg(progressionsFor(list[0])[0]);
-      const id = localStorage.getItem(KEY);
-      if (id) {
-        try { setSession(await api.getSession(id)); } catch { localStorage.removeItem(KEY); }
-      }
-      setLoading(false);
+      try {
+        const list = await api.getExercises();
+        setExercises(list);
+        setExId(list[0]?.id);
+        setProg(progressionsFor(list[0])[0]);
+        setSession(await api.getActiveSession()); // resume an unfinished workout, if any
+      } catch (e) {
+        setError(e.message || 'Could not load your workout.');
+      } finally { setLoading(false); }
     })();
   }, []);
 
   const pickExercise = (e) => { setExId(e.id); setProg(progressionsFor(e)[0]); };
 
   const start = async () => {
-    const s = await api.createSession({ notes: startNotes });
-    localStorage.setItem(KEY, s.id);
-    setSession(s);
+    setError('');
+    if (startNotes.length > 1000) return setError('Session notes must be 1000 characters or fewer.');
+    try {
+      setSession(await api.createSession({ notes: startNotes }));
+    } catch (e) { setError(e.message || 'Could not start the workout.'); }
   };
 
   const logSet = async () => {
     setError('');
-    if (reps < 1) return setError('Enter at least 1 rep.');
+    if (!Number.isInteger(reps) || reps < 1) return setError('Enter at least 1 rep.');
+    if (reps > 500) return setError('Reps cannot exceed 500.');
+    if (weight < 0) return setError('Added weight cannot be negative.');
     if (file) { const v = validateVideo(file); if (v) return setError(v); }
     setSaving(true);
     try {
       const set = await api.addSet(session.id, { exerciseId: exId, progression: prog, reps, weightKg: toKg(weight, units), rpe, notes });
-      if (file) await api.uploadVideo(set.id, file);
+      if (file && api.videoUploadEnabled) await api.uploadVideo(set.id, file);
       setSession(await api.getSession(session.id));
       setFile(null); setNotes(''); setRpe(null);
     } catch (e) {
-      setError('Could not save this set. Try again.');
+      setError(e.message || 'Could not save this set. Try again.');
     } finally { setSaving(false); }
   };
 
   const finish = async () => {
-    await api.finishSession(session.id);
-    localStorage.removeItem(KEY);
-    nav('/history');
+    setError('');
+    try {
+      await api.finishSession(session.id);
+      nav('/history');
+    } catch (e) { setError(e.message || 'Could not finish the workout.'); }
+  };
+
+  const discard = async () => {
+    if (!window.confirm('Discard this workout? This cannot be undone.')) return;
+    try {
+      await api.deleteSession(session.id);
+      setSession(null);
+    } catch (e) { setError(e.message || 'Could not discard the workout.'); }
+  };
+
+  const removeSet = async (s) => {
+    if (!window.confirm(`Delete ${s.exerciseName}, set ${s.setNumber}?`)) return;
+    try {
+      await api.deleteSet(s.id);
+      setSession(await api.getSession(session.id));
+    } catch (e) { setError(e.message || 'Could not delete the set.'); }
   };
 
   if (loading) return <p className="muted">Loading…</p>;
@@ -82,6 +102,7 @@ export default function Workout() {
             <label htmlFor="sn">Session notes (optional)</label>
             <textarea id="sn" value={startNotes} onChange={(e) => setStartNotes(e.target.value)} placeholder="Upper body day, park bars" />
           </div>
+          {error && <p className="error">{error}</p>}
           <button className="btn primary big" onClick={start}>Start workout</button>
         </div>
       </div>
@@ -91,7 +112,10 @@ export default function Workout() {
   return (
     <div className="stack fade">
       <PageHead title="Workout" sub={fmtLong(session.date)}>
-        <button className="btn" onClick={finish} disabled={session.sets.length === 0}>Finish workout</button>
+        <div className="row" style={{ gap: 8 }}>
+          {session.sets.length === 0 && <button className="btn ghost" onClick={discard}>Discard</button>}
+          <button className="btn" onClick={finish} disabled={session.sets.length === 0}>Finish workout</button>
+        </div>
       </PageHead>
 
       <section className="card stack">
@@ -133,12 +157,14 @@ export default function Workout() {
         </div>
         <div className="field">
           <label htmlFor="setnotes">Set notes (optional)</label>
-          <input id="setnotes" type="text" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Felt easy, grip slipped…" />
+          <input id="setnotes" type="text" maxLength={500} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Felt easy, grip slipped…" />
         </div>
-        <div className="field">
-          <span className="label">Form video (optional)</span>
-          <VideoDrop file={file} onFile={(f) => { setFile(f); setError(f ? validateVideo(f) : ''); }} error={error && file ? error : ''} />
-        </div>
+        {api.videoUploadEnabled && (
+          <div className="field">
+            <span className="label">Form video (optional)</span>
+            <VideoDrop file={file} onFile={(f) => { setFile(f); setError(f ? validateVideo(f) : ''); }} error={error && file ? error : ''} />
+          </div>
+        )}
         {error && !file && <p className="error">{error}</p>}
         <button className="btn primary big" onClick={logSet} disabled={saving}>{saving ? 'Saving…' : 'Log set'}</button>
       </section>
@@ -153,7 +179,10 @@ export default function Workout() {
                   <div className="title">{s.exerciseName}, set {s.setNumber}</div>
                   <div className="muted small">{s.progression}, {s.reps} reps{s.weightKg ? `, +${toDisplayWeight(s.weightKg, units)} ${units}` : ''}{s.rpe ? `, RPE ${s.rpe}` : ''}</div>
                 </div>
-                <StatusPill video={s.video} />
+                <div className="row" style={{ gap: 8 }}>
+                  <StatusPill video={s.video} />
+                  <button className="btn ghost" aria-label={`Delete ${s.exerciseName}, set ${s.setNumber}`} onClick={() => removeSet(s)}><Trash2 size={16} /></button>
+                </div>
               </div>
             ))}
           </div>
