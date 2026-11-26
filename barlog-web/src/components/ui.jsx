@@ -22,6 +22,7 @@ const FAIL_TEXT = {
   POOR_LIGHTING: 'The video was too dark to read your movement.',
   OCCLUSION: 'Part of your body was hidden from the camera.',
   DETECTION_FAILED: 'We could not find your body in the video.',
+  SERVICE_UNAVAILABLE: 'Form analysis is offline right now. Your video is saved.',
 };
 
 export function StatusPill({ video }) {
@@ -50,6 +51,9 @@ export function Feedback({ video }) {
   if (video.status === 'FAILED') return <p className="error">{FAIL_TEXT[a?.failureReason] || a?.summary} Film again with your full body in frame and good light.</p>;
   return (
     <div className="stack-sm">
+      {a.holdSeconds != null
+        ? <p className="count-line"><b>{a.holdSeconds}s</b> held</p>
+        : <p className="count-line"><b>{a.repsDetected}</b> {a.repsDetected === 1 ? 'rep' : 'reps'} counted from the video</p>}
       <p>{a.summary}</p>
       <div className="feedback">
         {a.items.map((it, i) => (

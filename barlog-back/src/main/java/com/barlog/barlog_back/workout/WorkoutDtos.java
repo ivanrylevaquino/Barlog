@@ -1,12 +1,14 @@
 package com.barlog.barlog_back.workout;
 
 import com.barlog.barlog_back.journal.Mood;
+import com.barlog.barlog_back.video.VideoService;
 import jakarta.validation.constraints.*;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /** Request and response bodies for the workout logging API. Field names match barlog-web/src/api/index.js. */
@@ -56,16 +58,20 @@ public final class WorkoutDtos {
         }
     }
 
-    /** {@code video} is always null until the video upload module (FR-010..FR-014) is implemented. */
+    /** {@code video} is null when no video is attached to the set. */
     public record SetDto(UUID id, UUID sessionId, Instant sessionDate, Long exerciseId, String exerciseName,
                          int setNumber, int reps, String progression, BigDecimal weightKg, Integer rpe,
-                         String notes, Instant createdAt, Object video) {
+                         String notes, Instant createdAt, VideoService.VideoDto video) {
         static SetDto from(ExerciseSet s) {
+            return from(s, null);
+        }
+
+        static SetDto from(ExerciseSet s, VideoService.VideoDto video) {
             WorkoutSession session = s.getSession();
             Exercise ex = s.getExercise();
             return new SetDto(s.getSetId(), session.getSessionId(), session.getStartedAt(), ex.getExerciseId(),
                     ex.getName(), s.getSetNumber(), s.getReps(), s.getProgression(), s.getWeightKg(), s.getRpe(),
-                    s.getNotes() == null ? "" : s.getNotes(), s.getCreatedAt(), null);
+                    s.getNotes() == null ? "" : s.getNotes(), s.getCreatedAt(), video);
         }
     }
 
@@ -73,13 +79,13 @@ public final class WorkoutDtos {
     public record SessionDto(UUID id, Instant date, Instant startedAt, Instant endedAt, String notes,
                              List<SetDto> sets, Mood mood) {
         static SessionDto from(WorkoutSession s) {
-            return from(s, null);
+            return from(s, null, Map.of());
         }
 
-        static SessionDto from(WorkoutSession s, Mood mood) {
+        static SessionDto from(WorkoutSession s, Mood mood, Map<UUID, VideoService.VideoDto> videos) {
             return new SessionDto(s.getSessionId(), s.getStartedAt(), s.getStartedAt(), s.getEndedAt(),
                     s.getNotes() == null ? "" : s.getNotes(),
-                    s.getSets().stream().map(SetDto::from).toList(), mood);
+                    s.getSets().stream().map(x -> SetDto.from(x, videos.get(x.getSetId()))).toList(), mood);
         }
     }
 

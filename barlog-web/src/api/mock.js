@@ -219,6 +219,7 @@ export async function uploadVideo(setId, file) {
   }, 5000);
   return set.video;
 }
+export async function reanalyzeVideo() { await wait(100); return null; }
 export async function listVideoSets() {
   await wait();
   return allSets().filter((s) => s.video && s.video.status === 'COMPLETED').sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));

@@ -75,6 +75,21 @@ npm run dev
 
 Open `http://localhost:5173`.
 
+### 4. Pose-analysis service (`barlog-analysis`, optional)
+Needed only for rep counting and form feedback on uploaded videos. Uses a **pretrained** Ultralytics YOLO pose model
+(no training). See [barlog-analysis/README.md](barlog-analysis/README.md) for credits and details.
+
+```powershell
+cd barlog-analysis
+python -m venv .venv
+.venv\Scripts\pip install --index-url https://download.pytorch.org/whl/cpu torch torchvision
+.venv\Scripts\pip install -r requirements.txt
+.venv\Scripts\uvicorn barlog_analysis.app:app --port 8001
+```
+The backend calls it at `ANALYSIS_URL` (default `http://localhost:8001`). Uploaded videos are stored under
+`barlog-back/uploads/` (`VIDEO_STORAGE_DIR`), so both services must run on the same machine. If the service is down,
+uploads still succeed and the video is marked `SERVICE_UNAVAILABLE` until you click "Analyze again".
+
 ## API Endpoints
 | Method | Path | Auth | Description |
 |---|---|---|---|
@@ -106,6 +121,10 @@ Open `http://localhost:5173`.
 | `GET` | `/api/sessions/{id}/journal` | `ROLE_PRACTITIONER` | The journal entry for a session, or `204` if none |
 | `PUT` | `/api/sessions/{id}/journal` | `ROLE_PRACTITIONER` | Write or update "How do you feel after this session?" (mood, energy, tags, text); session must be finished |
 | `DELETE` | `/api/sessions/{id}/journal` | `ROLE_PRACTITIONER` | Delete the journal entry |
+
+| `POST` | `/api/sets/{id}/video` | `ROLE_PRACTITIONER` | Upload a set video (multipart `file`; MP4/MOV/WebM, max 100 MB); pose analysis starts in the background |
+| `POST` | `/api/videos/{id}/reanalyze` | `ROLE_PRACTITIONER` | Run the analysis again (e.g. after the analysis service was offline) |
+| `GET` | `/api/videos/{id}/stream?exp=&sig=` | Signed URL | Video playback; URLs are signed and expire after 15 minutes |
 
 All workout and journal endpoints are scoped to the signed-in user; another user's session or set id returns `404`.
 

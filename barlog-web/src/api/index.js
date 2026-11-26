@@ -9,7 +9,7 @@ import * as mock from './mock';
 const USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false';
 const BASE = import.meta.env.VITE_API_URL || '/api/v1';
 
-async function http(path, { method = 'GET', body } = {}) {
+async function http(path, { method = 'GET', body, form } = {}) {
   const token = localStorage.getItem('barlog.token');
   const res = await fetch(BASE + path, {
     method,
@@ -17,7 +17,7 @@ async function http(path, { method = 'GET', body } = {}) {
       ...(body ? { 'Content-Type': 'application/json' } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: body ? JSON.stringify(body) : undefined,
+    body: form || (body ? JSON.stringify(body) : undefined),
   });
   if (res.status === 401 && !path.startsWith('/auth/login') && !path.startsWith('/auth/me/password')) {
     localStorage.removeItem('barlog.token');
@@ -75,18 +75,15 @@ const real = {
   deleteJournal: (sessionId) => http(`/sessions/${sessionId}/journal`, { method: 'DELETE' }),
 
   // Video upload (FR-010..014) has no backend yet; the UI hides the upload box while this is false.
-  videoUploadEnabled: false,
+  videoUploadEnabled: true,
 
-  // FR-013/014: 1) get presigned PUT  2) PUT file straight to S3  3) tell backend it landed
-  async uploadVideo(setId, file) {
-    const { uploadUrl, videoId } = await http(`/sets/${setId}/video/upload-url`, {
-      method: 'POST',
-      body: { fileName: file.name, contentType: file.type, sizeBytes: file.size },
-    });
-    const put = await fetch(uploadUrl, { method: 'PUT', headers: { 'Content-Type': file.type }, body: file });
-    if (!put.ok) throw new Error('Upload to storage failed.');
-    return http(`/videos/${videoId}/confirm`, { method: 'POST' }); // backend then dispatches analysis (FR-015)
+  // FR-011..015: upload the clip; the backend stores it and starts pose analysis in the background.
+  uploadVideo(setId, file) {
+    const form = new FormData();
+    form.append('file', file);
+    return http(`/sets/${setId}/video`, { method: 'POST', form });
   },
+  reanalyzeVideo: (videoId) => http(`/videos/${videoId}/reanalyze`, { method: 'POST' }),
 
   // Sets that have analyzed videos, newest first. Used by Compare.
   listVideoSets: () => http('/sets?hasVideo=true'),

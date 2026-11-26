@@ -5,6 +5,8 @@ import com.barlog.barlog_back.auth.UserRepository;
 import com.barlog.barlog_back.journal.JournalEntry;
 import com.barlog.barlog_back.journal.JournalEntryRepository;
 import com.barlog.barlog_back.journal.Mood;
+import com.barlog.barlog_back.video.VideoService;
+import com.barlog.barlog_back.video.VideoStatus;
 import com.barlog.barlog_back.shared.BusinessRuleException;
 import com.barlog.barlog_back.shared.ResourceNotFoundException;
 import com.barlog.barlog_back.workout.WorkoutDtos.*;
@@ -34,16 +36,18 @@ public class WorkoutService {
     private final ExerciseSetRepository setRepository;
     private final UserRepository userRepository;
     private final JournalEntryRepository journalRepository;
+    private final VideoService videoService;
     private final ZoneId zone;
 
     public WorkoutService(ExerciseRepository exerciseRepository, WorkoutSessionRepository sessionRepository,
                           ExerciseSetRepository setRepository, UserRepository userRepository,
-                          JournalEntryRepository journalRepository) {
+                          JournalEntryRepository journalRepository, VideoService videoService) {
         this.exerciseRepository = exerciseRepository;
         this.sessionRepository = sessionRepository;
         this.setRepository = setRepository;
         this.userRepository = userRepository;
         this.journalRepository = journalRepository;
+        this.videoService = videoService;
         this.zone = ZoneId.systemDefault();
     }
 
@@ -62,8 +66,9 @@ public class WorkoutService {
         for (JournalEntry j : journalRepository.findBySession_User_UserIdOrderBySession_StartedAtDesc(userId)) {
             moods.put(j.getSession().getSessionId(), j.getMood());
         }
+        Map<UUID, VideoService.VideoDto> videos = videoService.dtosForUser(userId);
         return sessionRepository.findByUser_UserIdOrderByStartedAtDesc(userId).stream()
-                .map(s -> SessionDto.from(s, moods.get(s.getSessionId()))).toList();
+                .map(s -> SessionDto.from(s, moods.get(s.getSessionId()), videos)).toList();
     }
 
     @Transactional(readOnly = true)
@@ -74,7 +79,8 @@ public class WorkoutService {
     @Transactional(readOnly = true)
     public SessionDto getSession(UUID userId, UUID sessionId) {
         return SessionDto.from(ownedSession(userId, sessionId),
-                journalRepository.findBySession_SessionId(sessionId).map(JournalEntry::getMood).orElse(null));
+                journalRepository.findBySession_SessionId(sessionId).map(JournalEntry::getMood).orElse(null),
+                videoService.dtosForUser(userId));
     }
 
     @Transactional
@@ -111,6 +117,7 @@ public class WorkoutService {
     public void deleteSession(UUID userId, UUID sessionId) {
         WorkoutSession s = ownedSession(userId, sessionId);
         journalRepository.findBySession_SessionId(sessionId).ifPresent(journalRepository::delete);
+        videoService.deleteForSets(s.getSets().stream().map(ExerciseSet::getSetId).toList());
         sessionRepository.delete(s); // sets cascade (orphanRemoval)
     }
 
@@ -135,14 +142,16 @@ public class WorkoutService {
 
     @Transactional(readOnly = true)
     public SetDto getSet(UUID userId, UUID setId) {
-        return SetDto.from(ownedSet(userId, setId));
+        return SetDto.from(ownedSet(userId, setId), videoService.dtoForSet(setId));
     }
 
     @Transactional(readOnly = true)
     public List<SetDto> listSets(UUID userId, boolean hasVideo) {
-        // Video upload (FR-010..FR-014) is not built yet, so no set has a video.
-        if (hasVideo) return List.of();
-        return setRepository.findBySession_User_UserIdOrderByCreatedAtDesc(userId).stream().map(SetDto::from).toList();
+        Map<UUID, VideoService.VideoDto> videos = videoService.dtosForUser(userId);
+        return setRepository.findBySession_User_UserIdOrderByCreatedAtDesc(userId).stream()
+                .filter(x -> !hasVideo || (videos.containsKey(x.getSetId())
+                        && videos.get(x.getSetId()).status() == VideoStatus.COMPLETED))
+                .map(x -> SetDto.from(x, videos.get(x.getSetId()))).toList();
     }
 
     @Transactional
@@ -152,7 +161,7 @@ public class WorkoutService {
             throw new IllegalArgumentException("The exercise of a logged set cannot be changed. Delete the set and log it again.");
         }
         apply(set, set.getExercise(), req);
-        return SetDto.from(set);
+        return SetDto.from(set, videoService.dtoForSet(setId));
     }
 
     @Transactional
@@ -160,6 +169,7 @@ public class WorkoutService {
         ExerciseSet set = ownedSet(userId, setId);
         WorkoutSession s = set.getSession();
         Long exId = set.getExercise().getExerciseId();
+        videoService.deleteForSets(List.of(setId));
         s.getSets().remove(set); // orphanRemoval deletes the row
         int n = 1;
         for (ExerciseSet x : s.getSets()) {

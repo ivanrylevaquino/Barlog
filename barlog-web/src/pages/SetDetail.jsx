@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../auth.jsx';
 import { fmtLong, progressionsFor, toDisplayWeight, toKg } from '../utils';
-import { Feedback, StatusPill, VideoBox } from '../components/ui.jsx';
+import { Feedback, StatusPill, VideoBox, VideoDrop, validateVideo } from '../components/ui.jsx';
 
 export default function SetDetail() {
   const { setId } = useParams();
@@ -16,6 +16,26 @@ export default function SetDetail() {
   const [form, setForm] = useState(null);
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [file, setFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [reload, setReload] = useState(0);
+
+  const upload = async () => {
+    const v = validateVideo(file);
+    if (v) return setFormError(v);
+    setUploading(true); setFormError('');
+    try {
+      await api.uploadVideo(set.id, file);
+      setFile(null);
+      setReload(reload + 1);
+    } catch (err) { setFormError(err.message || 'Upload failed. Try again.'); }
+    finally { setUploading(false); }
+  };
+
+  const retry = async () => {
+    try { await api.reanalyzeVideo(set.video.id); setReload(reload + 1); }
+    catch (err) { setFormError(err.message || 'Could not restart the analysis.'); }
+  };
 
   useEffect(() => {
     if (set && !exercise) api.getExercises().then((l) => setExercise(l.find((e) => e.id === set.exerciseId))).catch(() => {});
@@ -63,7 +83,7 @@ export default function SetDetail() {
     };
     load();
     return () => clearTimeout(timer);
-  }, [setId]);
+  }, [setId, reload]);
 
   if (error) return <p className="error">{error} <Link to="/history">Back to history</Link></p>;
   if (!set) return <p className="muted">Loading…</p>;
@@ -127,6 +147,17 @@ export default function SetDetail() {
       <section className="card stack-sm">
         <div className="row between"><h2>Form feedback</h2><StatusPill video={set.video} /></div>
         <Feedback video={set.video} />
+        {set.video?.status === 'FAILED' && set.video.analysis?.failureReason === 'SERVICE_UNAVAILABLE' && (
+          <button className="btn" style={{ alignSelf: 'flex-start' }} onClick={retry}>Analyze again</button>
+        )}
+        {api.videoUploadEnabled && (
+          <div className="stack-sm" style={{ marginTop: 8 }}>
+            <span className="label">{set.video ? 'Replace the video' : 'Add a video of this set'}</span>
+            <VideoDrop file={file} onFile={(f) => { setFile(f); setFormError(f ? validateVideo(f) : ''); }} />
+            {file && <button className="btn primary" style={{ alignSelf: 'flex-start' }} onClick={upload} disabled={uploading}>
+              {uploading ? 'Uploading…' : 'Upload and analyze'}</button>}
+          </div>
+        )}
       </section>
       {set.video?.status === 'COMPLETED' && <Link className="btn" to={`/compare?a=${set.id}`}>Compare with another set</Link>}
     </div>
