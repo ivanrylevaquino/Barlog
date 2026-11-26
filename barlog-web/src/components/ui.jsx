@@ -53,7 +53,7 @@ export function Feedback({ video }) {
     <div className="stack-sm">
       {a.holdSeconds != null
         ? <p className="count-line"><b>{a.holdSeconds}s</b> held</p>
-        : <p className="count-line"><b>{a.repsDetected}</b> {a.repsDetected === 1 ? 'rep' : 'reps'} counted from the video</p>}
+        : <p className="count-line"><b>{a.repsDetected}</b> {a.repsDetected === 1 ? 'rep' : 'reps'} counted from the video{a.partialReps ? <span className="muted small"> (+{a.partialReps} half)</span> : null}</p>}
       <p>{a.summary}</p>
       <div className="feedback">
         {a.items.map((it, i) => (

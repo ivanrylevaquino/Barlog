@@ -1,9 +1,12 @@
 package com.barlog.barlog_back.workout;
 
-/** The four foundational calisthenics movements in the predefined catalogue (FR-006, SRS Appendix A). */
+/** Predefined catalogue (FR-006, SRS Appendix A): four rep movements plus three timed holds. */
 public enum ExerciseType {
     PUSH_UP,
     PULL_UP,
     SQUAT,
-    DIP
+    DIP,
+    PLANK,
+    DEAD_HANG,
+    L_SIT
 }

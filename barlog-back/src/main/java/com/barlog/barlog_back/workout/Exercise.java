@@ -32,6 +32,10 @@ public class Exercise {
     @Column(name = "analysis_supported", nullable = false)
     private boolean analysisSupported;
 
+    /** True for timed holds (plank, dead hang, L-sit): logged in seconds instead of reps. */
+    @Column(name = "is_hold")
+    private Boolean hold;
+
     /** Ordered progression stages, easiest first, stored comma-separated (FR-008). */
     @Column(name = "progressions", nullable = false, length = 500)
     private String progressions;
@@ -71,6 +75,8 @@ public class Exercise {
     public String getCategory() { return category; }
     public void setCategory(String category) { this.category = category; }
     public boolean isAnalysisSupported() { return analysisSupported; }
+    public boolean isHold() { return Boolean.TRUE.equals(hold); }
+    public void setHold(boolean hold) { this.hold = hold; }
     public void setAnalysisSupported(boolean analysisSupported) { this.analysisSupported = analysisSupported; }
     public String getProgressions() { return progressions; }
     public void setProgressions(String progressions) { this.progressions = progressions; }

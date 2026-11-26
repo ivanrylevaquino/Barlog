@@ -39,6 +39,14 @@ public class ExerciseSet {
     @Column(name = "rpe")
     private Integer rpe;
 
+    /** How many sets this entry represents (one entry per exercise in a workout). Null on old rows = 1. */
+    @Column(name = "sets_count")
+    private Integer setsCount;
+
+    /** Seconds held per set, for hold exercises. */
+    @Column(name = "hold_seconds")
+    private Integer holdSeconds;
+
     @Column(name = "notes", length = 500)
     private String notes;
 
@@ -68,6 +76,10 @@ public class ExerciseSet {
     public BigDecimal getWeightKg() { return weightKg; }
     public void setWeightKg(BigDecimal weightKg) { this.weightKg = weightKg; }
     public Integer getRpe() { return rpe; }
+    public int getSetsCount() { return setsCount == null ? 1 : setsCount; }
+    public void setSetsCount(Integer setsCount) { this.setsCount = setsCount; }
+    public Integer getHoldSeconds() { return holdSeconds; }
+    public void setHoldSeconds(Integer holdSeconds) { this.holdSeconds = holdSeconds; }
     public void setRpe(Integer rpe) { this.rpe = rpe; }
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }

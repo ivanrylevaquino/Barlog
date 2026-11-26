@@ -23,12 +23,13 @@ def model():
     return YOLO(MODEL_NAME)
 
 
-def extract(video_path: str) -> tuple[list[Frame], float, float]:
-    """Returns (frames, video_fps, mean_brightness)."""
+def extract(video_path: str) -> tuple[list[Frame], float, float, tuple[int, int]]:
+    """Returns (frames, video_fps, mean_brightness, (width, height))."""
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         raise ValueError("Could not open the video file.")
     fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+    size = (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)))
     stride = max(1, round(fps / TARGET_FPS))
     frames: list[Frame] = []
     brightness_sum, brightness_n = 0.0, 0
@@ -46,7 +47,7 @@ def extract(video_path: str) -> tuple[list[Frame], float, float]:
             i += 1
     finally:
         cap.release()
-    return frames, fps, (brightness_sum / brightness_n if brightness_n else 0.0)
+    return frames, fps, (brightness_sum / brightness_n if brightness_n else 0.0), size
 
 
 def _main_person(img):

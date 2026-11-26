@@ -104,7 +104,7 @@ class VideoControllerIntegrationTest {
 
     @Test
     void uploadAnalyzeStreamAndDelete() throws Exception {
-        when(analysis.analyze(anyString(), eq("PUSH_UP"))).thenReturn(RESULT);
+        when(analysis.analyze(anyString(), eq("AUTO"), eq("PUSH_UP"))).thenReturn(RESULT);
         String setId = newSet();
 
         JsonNode up = body(as(tokenA, multipart("/api/sets/" + setId + "/video").file(mp4())), 202);
@@ -132,7 +132,7 @@ class VideoControllerIntegrationTest {
 
     @Test
     void analysisServiceDownMarksFailedThenRetryWorks() throws Exception {
-        when(analysis.analyze(anyString(), anyString())).thenThrow(new RuntimeException("Connection refused"));
+        when(analysis.analyze(anyString(), anyString(), anyString())).thenThrow(new RuntimeException("Connection refused"));
         String setId = newSet();
         body(as(tokenA, multipart("/api/sets/" + setId + "/video").file(mp4())), 202);
 
@@ -142,7 +142,7 @@ class VideoControllerIntegrationTest {
         assertEquals(8, body(as(tokenA, get("/api/sets/" + setId)), 200).get("reps").asInt());
 
         org.mockito.Mockito.reset(analysis);
-        when(analysis.analyze(anyString(), anyString())).thenReturn(RESULT);
+        when(analysis.analyze(anyString(), anyString(), anyString())).thenReturn(RESULT);
         body(as(tokenA, post("/api/videos/" + v.get("id").asText() + "/reanalyze")), 202);
         waitForVideo(setId, "COMPLETED");
     }

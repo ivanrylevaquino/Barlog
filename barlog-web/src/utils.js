@@ -25,3 +25,11 @@ export const PROGRESSIONS = {
   DIP: ['Bench', 'Assisted', 'Parallel bar', 'Weighted'],
 };
 export const progressionsFor = (ex) => ex?.progressions || PROGRESSIONS[ex?.type] || ['Standard'];
+
+// "3 × 8 · Incline · +5 kg" or "2 × 45s · Forearm"
+export function entryLabel(s, units) {
+  const sets = s.sets || 1;
+  const work = s.hold || s.holdSeconds != null ? `${s.holdSeconds ?? 0}s` : `${s.reps}`;
+  const weight = Number(s.weightKg) ? ` · +${toDisplayWeight(Number(s.weightKg), units)} ${units}` : '';
+  return `${sets} × ${work} · ${s.progression}${weight}`;
+}

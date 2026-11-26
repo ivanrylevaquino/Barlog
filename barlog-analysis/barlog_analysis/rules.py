@@ -243,8 +243,8 @@ def analyze(frames: list[Frame], exercise: str, brightness: Optional[float] = No
 
 
 def _failed(reason: str, summary: str) -> dict:
-    return {"status": "FAILED", "failureReason": reason, "overall": "FAILED", "repsDetected": 0,
-            "holdSeconds": None, "summary": summary, "items": [], "metrics": {}}
+    return {"status": "FAILED", "failureReason": reason, "overall": "FAILED", "repsDetected": 0, "partialReps": 0,
+            "holdSeconds": None, "summary": summary, "items": [], "repEvents": [], "metrics": {}}
 
 
 # ── Reps ────────────────────────────────────────────────────────────────
@@ -327,8 +327,12 @@ def _analyze_reps(ex: RepExercise, joints: list[tuple[float, Optional[dict]]]) -
                       "text": f"{len(partial)} rep{'s' if len(partial) > 1 else ''} didn't go deep enough to count."})
 
     items.sort(key=lambda it: {"ERROR": 0, "WARNING": 1, "POSITIVE": 2}[it["type"]])
-    return _result(len(reps), None, items, ex_label=None,
-                   metrics={"minAngle": _r(min(valid)), "maxAngle": _r(max(valid)), "partialReps": len(partial)})
+    out = _result(len(reps), None, items, ex_label=None,
+                  metrics={"minAngle": _r(min(valid)), "maxAngle": _r(max(valid)), "partialReps": len(partial)})
+    out["partialReps"] = len(partial)
+    out["repEvents"] = sorted([{"t": round(r.bottom_t, 2), "counted": True} for r in reps]
+                              + [{"t": round(t, 2), "counted": False} for t in partial], key=lambda e: e["t"])
+    return out
 
 
 def _track(rep: Rep, m: dict, ang: float) -> None:
@@ -384,7 +388,9 @@ def _analyze_hold(ex: HoldExercise, joints: list[tuple[float, Optional[dict]]]) 
             continue
         items.append({"type": "POSITIVE" if v else "WARNING", "t": fmt_time(s), "text": check.good if v else check.bad})
     items.sort(key=lambda it: {"ERROR": 0, "WARNING": 1, "POSITIVE": 2}[it["type"]])
-    return _result(None, round(duration, 1), items, ex_label=ex.label, metrics={"holdStart": round(s, 2), "holdEnd": round(e, 2)})
+    out = _result(None, round(duration, 1), items, ex_label=ex.label, metrics={"holdStart": round(s, 2), "holdEnd": round(e, 2)})
+    out["holdWindow"] = {"start": round(s, 2), "end": round(e, 2)}
+    return out
 
 
 # ── Result envelope ─────────────────────────────────────────────────────
@@ -404,8 +410,8 @@ def _result(reps: Optional[int], hold: Optional[float], items: list[dict], ex_la
     else:
         tail = "Your form held up well."
     return {"status": "COMPLETED", "failureReason": None, "overall": "GOOD" if good else "NEEDS_IMPROVEMENT",
-            "repsDetected": reps or 0, "holdSeconds": hold, "summary": f"{count}. {tail}", "items": items,
-            "metrics": metrics}
+            "repsDetected": reps or 0, "partialReps": 0, "holdSeconds": hold, "summary": f"{count}. {tail}",
+            "items": items, "repEvents": [], "metrics": metrics}
 
 
 def _r(v):

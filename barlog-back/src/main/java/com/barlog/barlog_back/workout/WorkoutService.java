@@ -157,10 +157,13 @@ public class WorkoutService {
     @Transactional
     public SetDto updateSet(UUID userId, UUID setId, SetRequest req) {
         ExerciseSet set = ownedSet(userId, setId);
-        if (!set.getExercise().getExerciseId().equals(req.exerciseId())) {
-            throw new IllegalArgumentException("The exercise of a logged set cannot be changed. Delete the set and log it again.");
+        Exercise ex = set.getExercise();
+        if (!ex.getExerciseId().equals(req.exerciseId())) {   // e.g. correcting a wrong auto-detection
+            ex = exerciseRepository.findById(req.exerciseId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Exercise not found."));
+            set.setExercise(ex);
         }
-        apply(set, set.getExercise(), req);
+        apply(set, ex, req);
         return SetDto.from(set, videoService.dtoForSet(setId));
     }
 
@@ -198,11 +201,11 @@ public class WorkoutService {
             for (ExerciseSet set : s.getSets()) {
                 if (exerciseId != null && !set.getExercise().getExerciseId().equals(exerciseId)) continue;
                 Day d = byDay.computeIfAbsent(date, k -> new Day(new int[2], new HashSet<>()));
-                d.volMax()[0] += set.getReps();
+                d.volMax()[0] += set.getReps() * set.getSetsCount();
                 d.volMax()[1] = Math.max(d.volMax()[1], set.getReps());
                 d.sessions().add(s.getSessionId());
                 allSessions.add(s.getSessionId());
-                volume += set.getReps();
+                volume += set.getReps() * set.getSetsCount();
                 maxReps = Math.max(maxReps, set.getReps());
             }
         }
@@ -231,7 +234,16 @@ public class WorkoutService {
                     + ". Choose one of: " + String.join(", ", ex.getProgressionList()) + ".");
         }
         set.setProgression(stage);
-        set.setReps(req.reps());
+        if (ex.isHold()) {
+            if (req.holdSeconds() == null) throw new IllegalArgumentException("Enter how many seconds you held the " + ex.getName() + ".");
+            set.setHoldSeconds(req.holdSeconds());
+            set.setReps(0);
+        } else {
+            if (req.reps() == null || req.reps() < 1) throw new IllegalArgumentException("Reps must be at least 1.");
+            set.setHoldSeconds(null);
+            set.setReps(req.reps());
+        }
+        set.setSetsCount(req.sets() == null ? 1 : req.sets());
         set.setWeightKg(req.weightKg() == null ? BigDecimal.ZERO : req.weightKg().setScale(2, RoundingMode.HALF_UP));
         set.setRpe(req.rpe());
         set.setNotes(clean(req.notes()));

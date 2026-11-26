@@ -74,8 +74,8 @@ public class JournalService {
         List<ExerciseSet> sets = s.getSets();
         Recap recap = new Recap(
                 sets.stream().map(x -> x.getExercise().getName()).distinct().toList(),
-                sets.size(),
-                sets.stream().mapToInt(ExerciseSet::getReps).sum());
+                sets.stream().mapToInt(ExerciseSet::getSetsCount).sum(),
+                sets.stream().mapToInt(x -> x.getReps() * x.getSetsCount()).sum());
         return new JournalDto(e.getEntryId(), s.getSessionId(), s.getStartedAt(), e.getMood(), e.getEnergy(),
                 e.getTagList(), e.getBody() == null ? "" : e.getBody(), e.getCreatedAt(), e.getUpdatedAt(), recap);
     }

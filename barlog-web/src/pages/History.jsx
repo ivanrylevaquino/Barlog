@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Trash2, Video } from 'lucide-react';
 import { api } from '../api';
 import { useAuth } from '../auth.jsx';
-import { fmtDate, toDisplayWeight } from '../utils';
+import { entryLabel, fmtDate } from '../utils';
 import { moodOf } from '../journal';
 import { Empty, PageHead } from '../components/ui.jsx';
 
@@ -61,8 +61,8 @@ export default function History() {
                 {s.sets.map((x) => (
                   <Link key={x.id} to={`/sets/${x.id}`} className="list-item">
                     <div>
-                      <div className="title">{x.exerciseName}, set {x.setNumber}</div>
-                      <div className="muted small">{x.progression}, {x.reps} reps{x.weightKg ? `, +${toDisplayWeight(x.weightKg, units)} ${units}` : ''}</div>
+                      <div className="title">{x.exerciseName}</div>
+                      <div className="muted small">{entryLabel(x, units)}{x.notes ? ` · ${x.notes}` : ''}</div>
                     </div>
                     {x.video && <span className="pill neutral"><Video size={14} /> Video</span>}
                   </Link>

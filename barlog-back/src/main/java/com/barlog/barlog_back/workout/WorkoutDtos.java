@@ -32,10 +32,17 @@ public final class WorkoutDtos {
             @Size(max = 60, message = "Progression must be 60 characters or fewer.")
             String progression,
 
-            @NotNull(message = "Enter the number of reps.")
-            @Min(value = 1, message = "Reps must be at least 1.")
+            @Min(value = 0, message = "Reps cannot be negative.")
             @Max(value = 500, message = "Reps cannot exceed 500.")
             Integer reps,
+
+            @Min(value = 1, message = "Sets must be at least 1.")
+            @Max(value = 50, message = "Sets cannot exceed 50.")
+            Integer sets,
+
+            @Min(value = 1, message = "Hold time must be at least 1 second.")
+            @Max(value = 3600, message = "Hold time cannot exceed an hour.")
+            Integer holdSeconds,
 
             @DecimalMin(value = "0.0", message = "Added weight cannot be negative.")
             @DecimalMax(value = "300.0", message = "Added weight cannot exceed 300 kg.")
@@ -45,23 +52,24 @@ public final class WorkoutDtos {
             @Max(value = 10, message = "RPE must be between 1 and 10.")
             Integer rpe,
 
-            @Size(max = 500, message = "Set notes must be 500 characters or fewer.")
+            @Size(max = 500, message = "Notes must be 500 characters or fewer.")
             String notes) {}
 
     // ── Responses ─────────────────────────────────────────────────────────
 
     public record ExerciseDto(Long id, String name, ExerciseType type, String category,
-                              boolean analysisSupported, List<String> progressions) {
+                              boolean analysisSupported, List<String> progressions, boolean hold) {
         static ExerciseDto from(Exercise e) {
             return new ExerciseDto(e.getExerciseId(), e.getName(), e.getType(), e.getCategory(),
-                    e.isAnalysisSupported(), e.getProgressionList());
+                    e.isAnalysisSupported(), e.getProgressionList(), e.isHold());
         }
     }
 
     /** {@code video} is null when no video is attached to the set. */
     public record SetDto(UUID id, UUID sessionId, Instant sessionDate, Long exerciseId, String exerciseName,
                          int setNumber, int reps, String progression, BigDecimal weightKg, Integer rpe,
-                         String notes, Instant createdAt, VideoService.VideoDto video) {
+                         String notes, Instant createdAt, VideoService.VideoDto video,
+                         int sets, Integer holdSeconds, ExerciseType exerciseType, boolean hold) {
         static SetDto from(ExerciseSet s) {
             return from(s, null);
         }
@@ -71,7 +79,8 @@ public final class WorkoutDtos {
             Exercise ex = s.getExercise();
             return new SetDto(s.getSetId(), session.getSessionId(), session.getStartedAt(), ex.getExerciseId(),
                     ex.getName(), s.getSetNumber(), s.getReps(), s.getProgression(), s.getWeightKg(), s.getRpe(),
-                    s.getNotes() == null ? "" : s.getNotes(), s.getCreatedAt(), video);
+                    s.getNotes() == null ? "" : s.getNotes(), s.getCreatedAt(), video,
+                    s.getSetsCount(), s.getHoldSeconds(), ex.getType(), ex.isHold());
         }
     }
 

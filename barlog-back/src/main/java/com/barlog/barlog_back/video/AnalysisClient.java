@@ -22,11 +22,14 @@ public class AnalysisClient {
         this.http = RestClient.builder().baseUrl(baseUrl).requestFactory(f).build();
     }
 
-    /** Returns the raw JSON result. Throws on network errors or non-2xx responses. */
-    public String analyze(String absoluteVideoPath, String exercise) {
+    /**
+     * Returns the raw JSON result; throws on network errors or non-2xx responses.
+     * exercise "AUTO" lets the service detect it; hint is used when detection is unsure.
+     */
+    public String analyze(String absoluteVideoPath, String exercise, String hint) {
         return http.post().uri("/analyze")
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(Map.of("videoPath", absoluteVideoPath, "exercise", exercise))
+                .body(Map.of("videoPath", absoluteVideoPath, "exercise", exercise, "hint", hint))
                 .retrieve()
                 .body(String.class);
     }

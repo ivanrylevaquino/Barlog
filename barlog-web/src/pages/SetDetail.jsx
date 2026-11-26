@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../auth.jsx';
-import { fmtLong, progressionsFor, toDisplayWeight, toKg } from '../utils';
+import { entryLabel, fmtLong, progressionsFor, toDisplayWeight, toKg } from '../utils';
 import { Feedback, StatusPill, VideoBox, VideoDrop, validateVideo } from '../components/ui.jsx';
+import SkeletonPlayer from '../components/SkeletonPlayer.jsx';
 
 export default function SetDetail() {
   const { setId } = useParams();
@@ -12,6 +13,7 @@ export default function SetDetail() {
   const [error, setError] = useState('');
   const nav = useNavigate();
   const [exercise, setExercise] = useState(null);
+  const [allEx, setAllEx] = useState([]);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState(null);
   const [formError, setFormError] = useState('');
@@ -38,11 +40,12 @@ export default function SetDetail() {
   };
 
   useEffect(() => {
-    if (set && !exercise) api.getExercises().then((l) => setExercise(l.find((e) => e.id === set.exerciseId))).catch(() => {});
+    if (set && !allEx.length) api.getExercises().then((l) => { setAllEx(l); setExercise(l.find((e) => e.id === set.exerciseId)); }).catch(() => {});
   }, [set]);
 
   const startEdit = () => {
-    setForm({ progression: set.progression, reps: set.reps, weight: toDisplayWeight(Number(set.weightKg), units), rpe: set.rpe ?? '', notes: set.notes || '' });
+    setForm({ exerciseId: set.exerciseId, progression: set.progression, sets: set.sets || 1, reps: set.reps || 1, hold: set.holdSeconds ?? 30,
+              weight: toDisplayWeight(Number(set.weightKg), units), rpe: set.rpe ?? '', notes: set.notes || '' });
     setFormError('');
     setEditing(true);
   };
@@ -50,21 +53,30 @@ export default function SetDetail() {
   const save = async (e) => {
     e.preventDefault();
     setFormError('');
-    const reps = Number(form.reps), weight = Number(form.weight), rpe = form.rpe === '' ? null : Number(form.rpe);
-    if (!Number.isInteger(reps) || reps < 1 || reps > 500) return setFormError('Reps must be a whole number from 1 to 500.');
+    const ex = allEx.find((x) => x.id === Number(form.exerciseId)) || exercise;
+    const reps = Number(form.reps), sets = Number(form.sets), hold = Number(form.hold);
+    const weight = Number(form.weight), rpe = form.rpe === '' ? null : Number(form.rpe);
+    if (!Number.isInteger(sets) || sets < 1 || sets > 50) return setFormError('Sets must be a whole number from 1 to 50.');
+    if (ex?.hold) { if (!(hold >= 1)) return setFormError('Enter how many seconds you held it.'); }
+    else if (!Number.isInteger(reps) || reps < 1 || reps > 500) return setFormError('Reps must be a whole number from 1 to 500.');
     if (Number.isNaN(weight) || weight < 0) return setFormError('Added weight cannot be negative.');
     if (rpe !== null && (!Number.isInteger(rpe) || rpe < 1 || rpe > 10)) return setFormError('RPE must be between 1 and 10.');
     setSaving(true);
     try {
-      const updated = await api.updateSet(set.id, { exerciseId: set.exerciseId, progression: form.progression, reps, weightKg: toKg(weight, units), rpe, notes: form.notes });
-      setSet({ ...set, ...updated });
+      const updated = await api.updateSet(set.id, {
+        exerciseId: ex?.id ?? set.exerciseId, progression: form.progression, sets,
+        reps: ex?.hold ? null : reps, holdSeconds: ex?.hold ? Math.round(hold) : null,
+        weightKg: toKg(weight, units), rpe, notes: form.notes,
+      });
+      setSet({ ...set, ...updated, video: set.video });
+      setExercise(ex);
       setEditing(false);
     } catch (err) { setFormError(err.message || 'Could not save changes.'); }
     finally { setSaving(false); }
   };
 
   const remove = async () => {
-    if (!window.confirm('Delete this set? This cannot be undone.')) return;
+    if (!window.confirm('Delete this exercise from the workout? This cannot be undone.')) return;
     try {
       await api.deleteSet(set.id);
       nav('/history');
@@ -92,12 +104,13 @@ export default function SetDetail() {
     <div className="stack fade">
       <div>
         <Link to="/history" className="small">Back to history</Link>
-        <h1 style={{ marginTop: 8 }}>{set.exerciseName}, set {set.setNumber}</h1>
+        <h1 style={{ marginTop: 8 }}>{set.exerciseName}</h1>
         <p className="muted">{fmtLong(set.createdAt)}</p>
       </div>
-      <VideoBox video={set.video} />
+      {set.video?.url ? <SkeletonPlayer src={set.video.url} analysis={set.video.analysis} /> : <VideoBox video={set.video} />}
       <div className="stats">
-        <div className="stat"><span className="muted small">Reps</span><b>{set.reps}</b></div>
+        <div className="stat"><span className="muted small">Sets</span><b>{set.sets || 1}</b></div>
+        <div className="stat"><span className="muted small">{set.hold ? 'Hold per set' : 'Reps per set'}</span><b>{set.hold ? `${set.holdSeconds}s` : set.reps}</b></div>
         <div className="stat"><span className="muted small">Progression</span><b style={{ fontSize: '1.2rem', paddingTop: 6 }}>{set.progression}</b></div>
         <div className="stat"><span className="muted small">Added weight</span><b>{toDisplayWeight(set.weightKg, units)} {units}</b></div>
       </div>
@@ -106,18 +119,40 @@ export default function SetDetail() {
       )}
       {editing ? (
         <form className="card stack-sm" onSubmit={save} noValidate>
-          <h2>Edit set</h2>
-          <div className="field">
-            <label htmlFor="ed-prog">Progression</label>
-            <select id="ed-prog" value={form.progression} onChange={(e) => setForm({ ...form, progression: e.target.value })}>
-              {progressionsFor(exercise || { type: null, progressions: [set.progression] }).map((p) => <option key={p} value={p}>{p}</option>)}
-            </select>
+          <h2>Edit exercise</h2>
+          <div className="form-grid">
+            <div className="field">
+              <label htmlFor="ed-ex">Exercise</label>
+              <select id="ed-ex" value={form.exerciseId} onChange={(e) => {
+                const ex = allEx.find((x) => x.id === Number(e.target.value));
+                setForm({ ...form, exerciseId: Number(e.target.value), progression: progressionsFor(ex)[0] });
+              }}>
+                {allEx.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+              </select>
+            </div>
+            <div className="field">
+              <label htmlFor="ed-prog">Progression</label>
+              <select id="ed-prog" value={form.progression} onChange={(e) => setForm({ ...form, progression: e.target.value })}>
+                {progressionsFor(allEx.find((x) => x.id === Number(form.exerciseId)) || exercise || { progressions: [set.progression] }).map((p) => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
           </div>
           <div className="form-grid">
             <div className="field">
-              <label htmlFor="ed-reps">Reps</label>
-              <input id="ed-reps" type="number" min="1" max="500" value={form.reps} onChange={(e) => setForm({ ...form, reps: e.target.value })} />
+              <label htmlFor="ed-sets">Sets</label>
+              <input id="ed-sets" type="number" min="1" max="50" value={form.sets} onChange={(e) => setForm({ ...form, sets: e.target.value })} />
             </div>
+            {allEx.find((x) => x.id === Number(form.exerciseId))?.hold ? (
+              <div className="field">
+                <label htmlFor="ed-hold">Hold per set (seconds)</label>
+                <input id="ed-hold" type="number" min="1" value={form.hold} onChange={(e) => setForm({ ...form, hold: e.target.value })} />
+              </div>
+            ) : (
+              <div className="field">
+                <label htmlFor="ed-reps">Reps per set</label>
+                <input id="ed-reps" type="number" min="1" max="500" value={form.reps} onChange={(e) => setForm({ ...form, reps: e.target.value })} />
+              </div>
+            )}
             <div className="field">
               <label htmlFor="ed-w">Added weight ({units})</label>
               <input id="ed-w" type="number" min="0" step="0.5" value={form.weight} onChange={(e) => setForm({ ...form, weight: e.target.value })} />
@@ -139,8 +174,8 @@ export default function SetDetail() {
         </form>
       ) : (
         <div className="row" style={{ gap: 8 }}>
-          <button className="btn" onClick={startEdit}>Edit set</button>
-          <button className="btn ghost" onClick={remove}>Delete set</button>
+          <button className="btn" onClick={startEdit}>Edit</button>
+          <button className="btn ghost" onClick={remove}>Delete</button>
           {formError && <p className="error">{formError}</p>}
         </div>
       )}

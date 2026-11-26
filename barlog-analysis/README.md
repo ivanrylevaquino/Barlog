@@ -20,6 +20,11 @@ rep count / hold time and plain-English form feedback (SRS FR-015 – FR-020). N
      WARNING / ERROR feedback items with timestamps.
    - **Failures**: `DETECTION_FAILED`, `POOR_LIGHTING`, `OCCLUSION` when the person can't be tracked.
 
+3. `detect.py` guesses the exercise when the backend sends `"exercise": "AUTO"` (horizontal body -> push-up/plank,
+   hanging -> pull-up/dead hang, knees moving -> squat, ...). The app lets the user correct it.
+4. The response also carries `repEvents` (time of each counted and half rep), `partialReps`, `holdWindow` and a
+   compact per-frame keypoint `track`, which the web app draws as a skeleton over the video.
+
 Best results: film from the side, whole body in frame, good light. Thresholds live at the top of each exercise in
 `rules.py` and are meant to be tuned against real clips.
 

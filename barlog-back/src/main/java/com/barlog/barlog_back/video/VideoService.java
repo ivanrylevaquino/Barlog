@@ -138,10 +138,11 @@ public class VideoService {
 
     // ── Reading ─────────────────────────────────────────────────────────
 
+    /** Lightweight DTOs for list views: the per-frame skeleton track is left out. */
     @Transactional(readOnly = true)
     public Map<UUID, VideoDto> dtosForUser(UUID userId) {
         Map<UUID, VideoDto> out = new HashMap<>();
-        for (VideoClip c : videos.findBySet_Session_User_UserId(userId)) out.put(c.getSet().getSetId(), toDto(c));
+        for (VideoClip c : videos.findBySet_Session_User_UserId(userId)) out.put(c.getSet().getSetId(), toDto(c, false));
         return out;
     }
 
@@ -156,10 +157,15 @@ public class VideoService {
     }
 
     VideoDto toDto(VideoClip c) {
+        return toDto(c, true);
+    }
+
+    VideoDto toDto(VideoClip c, boolean withTrack) {
         JsonNode analysis = null;
         if (c.getAnalysisJson() != null) {
             try { analysis = json.readTree(c.getAnalysisJson()); } catch (Exception ignored) { }
         }
+        if (!withTrack && analysis instanceof ObjectNode o) o.remove("track");
         return new VideoDto(c.getVideoId(), signer.playbackUrl(c.getVideoId()), c.getStatus(), analysis, c.getOriginalName());
     }
 

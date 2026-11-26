@@ -20,6 +20,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -85,7 +86,7 @@ class WorkoutControllerIntegrationTest {
     void catalogueIsSeeded() throws Exception {
         mvc.perform(as(tokenA, get("/api/exercises")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(4))
+                .andExpect(jsonPath("$.length()").value(7))
                 .andExpect(jsonPath("$[0].progressions").isArray());
     }
 
@@ -152,6 +153,35 @@ class WorkoutControllerIntegrationTest {
         body(as(tokenA, post("/api/sessions/" + sid + "/sets")).content(set(99999, "Standard", 5)), 404);
         body(as(tokenA, get("/api/progress?range=15")), 400);
         body(as(tokenA, get("/api/sessions/not-a-uuid")), 400);
+    }
+
+    @Test
+    void setsTimesRepsHoldsAndCorrectingTheExercise() throws Exception {
+        long push = pushUpId();
+        long plank = -1;
+        for (JsonNode e : body(as(tokenA, get("/api/exercises")), 200)) {
+            if (e.get("type").asText().equals("PLANK")) plank = e.get("id").asLong();
+        }
+        String sid = body(as(tokenA, post("/api/sessions")).content("{}"), 201).get("id").asText();
+
+        JsonNode entry = body(as(tokenA, post("/api/sessions/" + sid + "/sets"))
+                .content("{\"exerciseId\":" + push + ",\"progression\":\"Standard\",\"reps\":10,\"sets\":3}"), 201);
+        assertEquals(3, entry.get("sets").asInt());
+
+        // a hold needs seconds, not reps
+        body(as(tokenA, post("/api/sessions/" + sid + "/sets"))
+                .content("{\"exerciseId\":" + plank + ",\"progression\":\"Forearm\"}"), 400);
+        JsonNode hold = body(as(tokenA, post("/api/sessions/" + sid + "/sets"))
+                .content("{\"exerciseId\":" + plank + ",\"progression\":\"Forearm\",\"holdSeconds\":45,\"sets\":2}"), 201);
+        assertEquals(45, hold.get("holdSeconds").asInt());
+        assertTrue(hold.get("hold").asBoolean());
+
+        // correcting a wrong exercise (e.g. after auto-detection) is allowed
+        body(as(tokenA, patch("/api/sets/" + hold.get("id").asText()))
+                .content("{\"exerciseId\":" + push + ",\"progression\":\"Incline\",\"reps\":12}"), 200);
+
+        // volume counts every set: 3x10 + 1x12
+        mvc.perform(as(tokenA, get("/api/progress?range=7"))).andExpect(jsonPath("$.totals.volume").value(42));
     }
 
     @Test

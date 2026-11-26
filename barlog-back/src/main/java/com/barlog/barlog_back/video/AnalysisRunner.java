@@ -22,7 +22,7 @@ public class AnalysisRunner {
         videos.job(videoId).ifPresent(job -> {
             String result;
             try {
-                result = client.analyze(job.path(), job.exercise());
+                result = client.analyze(job.path(), "AUTO", job.exercise());
             } catch (Exception e) {
                 videos.recordServiceFailure(videoId, e.getMessage());
                 return;
