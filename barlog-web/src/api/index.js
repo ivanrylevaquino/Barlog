@@ -31,7 +31,9 @@ async function http(path, { method = 'GET', body, form } = {}) {
     err.status = res.status;
     throw err;
   }
-  return res.status === 204 ? null : res.json();
+  // Some endpoints answer with an empty body (204 No Content, 202 Accepted): treat that as null.
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
 }
 
 const qs = (o) => {
