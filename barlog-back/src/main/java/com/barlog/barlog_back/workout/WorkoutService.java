@@ -2,6 +2,9 @@ package com.barlog.barlog_back.workout;
 
 import com.barlog.barlog_back.auth.User;
 import com.barlog.barlog_back.auth.UserRepository;
+import com.barlog.barlog_back.journal.JournalEntry;
+import com.barlog.barlog_back.journal.JournalEntryRepository;
+import com.barlog.barlog_back.journal.Mood;
 import com.barlog.barlog_back.shared.BusinessRuleException;
 import com.barlog.barlog_back.shared.ResourceNotFoundException;
 import com.barlog.barlog_back.workout.WorkoutDtos.*;
@@ -30,14 +33,17 @@ public class WorkoutService {
     private final WorkoutSessionRepository sessionRepository;
     private final ExerciseSetRepository setRepository;
     private final UserRepository userRepository;
+    private final JournalEntryRepository journalRepository;
     private final ZoneId zone;
 
     public WorkoutService(ExerciseRepository exerciseRepository, WorkoutSessionRepository sessionRepository,
-                          ExerciseSetRepository setRepository, UserRepository userRepository) {
+                          ExerciseSetRepository setRepository, UserRepository userRepository,
+                          JournalEntryRepository journalRepository) {
         this.exerciseRepository = exerciseRepository;
         this.sessionRepository = sessionRepository;
         this.setRepository = setRepository;
         this.userRepository = userRepository;
+        this.journalRepository = journalRepository;
         this.zone = ZoneId.systemDefault();
     }
 
@@ -52,7 +58,12 @@ public class WorkoutService {
 
     @Transactional(readOnly = true)
     public List<SessionDto> listSessions(UUID userId) {
-        return sessionRepository.findByUser_UserIdOrderByStartedAtDesc(userId).stream().map(SessionDto::from).toList();
+        Map<UUID, Mood> moods = new HashMap<>();
+        for (JournalEntry j : journalRepository.findBySession_User_UserIdOrderBySession_StartedAtDesc(userId)) {
+            moods.put(j.getSession().getSessionId(), j.getMood());
+        }
+        return sessionRepository.findByUser_UserIdOrderByStartedAtDesc(userId).stream()
+                .map(s -> SessionDto.from(s, moods.get(s.getSessionId()))).toList();
     }
 
     @Transactional(readOnly = true)
@@ -62,7 +73,8 @@ public class WorkoutService {
 
     @Transactional(readOnly = true)
     public SessionDto getSession(UUID userId, UUID sessionId) {
-        return SessionDto.from(ownedSession(userId, sessionId));
+        return SessionDto.from(ownedSession(userId, sessionId),
+                journalRepository.findBySession_SessionId(sessionId).map(JournalEntry::getMood).orElse(null));
     }
 
     @Transactional
@@ -97,7 +109,9 @@ public class WorkoutService {
 
     @Transactional
     public void deleteSession(UUID userId, UUID sessionId) {
-        sessionRepository.delete(ownedSession(userId, sessionId)); // sets cascade (orphanRemoval)
+        WorkoutSession s = ownedSession(userId, sessionId);
+        journalRepository.findBySession_SessionId(sessionId).ifPresent(journalRepository::delete);
+        sessionRepository.delete(s); // sets cascade (orphanRemoval)
     }
 
     // ── Sets (FR-007, FR-008, FR-009) ─────────────────────────────────────

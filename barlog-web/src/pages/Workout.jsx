@@ -71,7 +71,7 @@ export default function Workout() {
     setError('');
     try {
       await api.finishSession(session.id);
-      nav('/history');
+      nav(`/journal/${session.id}?new=1`); // straight to "How do you feel after this session?"
     } catch (e) { setError(e.message || 'Could not finish the workout.'); }
   };
 

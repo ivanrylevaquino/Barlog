@@ -102,7 +102,12 @@ Open `http://localhost:5173`.
 | `DELETE` | `/api/sets/{id}` | `ROLE_PRACTITIONER` | Delete a set (remaining sets are renumbered) |
 | `GET` | `/api/progress?range=7\|30\|90\|all&exerciseId=` | `ROLE_PRACTITIONER` | Volume, max reps and session count per day (FR-021..023) |
 
-All workout endpoints are scoped to the signed-in user; another user's session or set id returns `404`.
+| `GET` | `/api/journal` | `ROLE_PRACTITIONER` | All post-session journal entries, newest first |
+| `GET` | `/api/sessions/{id}/journal` | `ROLE_PRACTITIONER` | The journal entry for a session, or `204` if none |
+| `PUT` | `/api/sessions/{id}/journal` | `ROLE_PRACTITIONER` | Write or update "How do you feel after this session?" (mood, energy, tags, text); session must be finished |
+| `DELETE` | `/api/sessions/{id}/journal` | `ROLE_PRACTITIONER` | Delete the journal entry |
+
+All workout and journal endpoints are scoped to the signed-in user; another user's session or set id returns `404`.
 
 ## Security Notes
 - `.env` files, `barlog-back/.m2/`, and `node_modules/` are gitignored. Never commit database passwords, JWT secrets, or real `application.properties` credentials.

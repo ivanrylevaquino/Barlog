@@ -68,6 +68,12 @@ const real = {
   updateSet: (setId, set) => http(`/sets/${setId}`, { method: 'PATCH', body: set }),
   deleteSet: (setId) => http(`/sets/${setId}`, { method: 'DELETE' }),
 
+  // Post-session journal: { mood, energy, tags, body }
+  listJournal: () => http('/journal'),
+  getJournal: (sessionId) => http(`/sessions/${sessionId}/journal`), // null (204) when not written yet
+  saveJournal: (sessionId, entry) => http(`/sessions/${sessionId}/journal`, { method: 'PUT', body: entry }),
+  deleteJournal: (sessionId) => http(`/sessions/${sessionId}/journal`, { method: 'DELETE' }),
+
   // Video upload (FR-010..014) has no backend yet; the UI hides the upload box while this is false.
   videoUploadEnabled: false,
 

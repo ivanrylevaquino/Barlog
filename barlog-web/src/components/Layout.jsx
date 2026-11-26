@@ -1,11 +1,12 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { ArrowLeftRight, Dumbbell, History, Home, TrendingUp, User } from 'lucide-react';
+import { ArrowLeftRight, BookOpen, Dumbbell, History, Home, TrendingUp, User } from 'lucide-react';
 import Logo from './Logo.jsx';
 
 const NAV = [
   { to: '/', label: 'Home', icon: Home, end: true },
   { to: '/workout', label: 'Workout', icon: Dumbbell },
   { to: '/history', label: 'History', icon: History },
+  { to: '/journal', label: 'Journal', icon: BookOpen },
   { to: '/progress', label: 'Progress', icon: TrendingUp },
   { to: '/compare', label: 'Compare', icon: ArrowLeftRight },
   { to: '/profile', label: 'Profile', icon: User },

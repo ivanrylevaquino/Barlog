@@ -9,6 +9,8 @@ import SetDetail from './pages/SetDetail.jsx';
 import Progress from './pages/Progress.jsx';
 import Compare from './pages/Compare.jsx';
 import Profile from './pages/Profile.jsx';
+import Journal from './pages/Journal.jsx';
+import JournalEntry from './pages/JournalEntry.jsx';
 
 function Protected({ children }) {
   const { user, ready } = useAuth();
@@ -25,6 +27,8 @@ export default function App() {
         <Route path="workout" element={<Workout />} />
         <Route path="history" element={<History />} />
         <Route path="sets/:setId" element={<SetDetail />} />
+        <Route path="journal" element={<Journal />} />
+        <Route path="journal/:sessionId" element={<JournalEntry />} />
         <Route path="progress" element={<Progress />} />
         <Route path="compare" element={<Compare />} />
         <Route path="profile" element={<Profile />} />

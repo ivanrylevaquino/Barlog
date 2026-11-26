@@ -66,7 +66,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/auth/google", "/api/auth/login", "/api/auth/forgot-password", "/api/auth/reset-password").permitAll()
                 .requestMatchers("/error").permitAll()
                 .requestMatchers("/api/dashboard/practitioner").hasRole("PRACTITIONER")
-                .requestMatchers("/api/exercises/**", "/api/sessions/**", "/api/sets/**", "/api/progress/**").hasRole("PRACTITIONER")
+                .requestMatchers("/api/exercises/**", "/api/sessions/**", "/api/sets/**", "/api/progress/**", "/api/journal/**").hasRole("PRACTITIONER")
                 .requestMatchers("/api/**").authenticated()
                 .anyRequest().permitAll()
             )

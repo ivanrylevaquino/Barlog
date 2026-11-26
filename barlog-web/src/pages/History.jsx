@@ -4,6 +4,7 @@ import { Trash2, Video } from 'lucide-react';
 import { api } from '../api';
 import { useAuth } from '../auth.jsx';
 import { fmtDate, toDisplayWeight } from '../utils';
+import { moodOf } from '../journal';
 import { Empty, PageHead } from '../components/ui.jsx';
 
 export default function History() {
@@ -51,6 +52,11 @@ export default function History() {
                 </div>
               </div>
               {s.notes && <p className="muted small">{s.notes}</p>}
+              {s.endedAt && (
+                <Link to={`/journal/${s.id}`} className="small journal-link" style={{ '--mood': moodOf(s.mood)?.color }}>
+                  {s.mood ? <><span className="mood-dot" aria-hidden="true" /> Felt {moodOf(s.mood).word.toLowerCase()} · read journal</> : 'How did this session feel? Write in your journal'}
+                </Link>
+              )}
               <div className="list" style={{ marginTop: 8 }}>
                 {s.sets.map((x) => (
                   <Link key={x.id} to={`/sets/${x.id}`} className="list-item">

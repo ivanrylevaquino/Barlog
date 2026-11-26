@@ -1,5 +1,6 @@
 package com.barlog.barlog_back.workout;
 
+import com.barlog.barlog_back.journal.Mood;
 import jakarta.validation.constraints.*;
 
 import java.math.BigDecimal;
@@ -68,11 +69,17 @@ public final class WorkoutDtos {
         }
     }
 
-    public record SessionDto(UUID id, Instant date, Instant startedAt, Instant endedAt, String notes, List<SetDto> sets) {
+    /** {@code mood} is the post-session journal mood, or null when no entry has been written. */
+    public record SessionDto(UUID id, Instant date, Instant startedAt, Instant endedAt, String notes,
+                             List<SetDto> sets, Mood mood) {
         static SessionDto from(WorkoutSession s) {
+            return from(s, null);
+        }
+
+        static SessionDto from(WorkoutSession s, Mood mood) {
             return new SessionDto(s.getSessionId(), s.getStartedAt(), s.getStartedAt(), s.getEndedAt(),
                     s.getNotes() == null ? "" : s.getNotes(),
-                    s.getSets().stream().map(SetDto::from).toList());
+                    s.getSets().stream().map(SetDto::from).toList(), mood);
         }
     }
 

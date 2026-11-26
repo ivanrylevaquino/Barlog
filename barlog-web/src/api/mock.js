@@ -106,6 +106,38 @@ export async function changePassword() {
   return { token: 'mock-jwt', user: { ...mockUser } };
 }
 export const videoUploadEnabled = true;
+
+// ---- journal ----
+let journal = {}; // sessionId -> entry
+const journalDto = (sessionId) => {
+  const s = sessions.find((x) => x.id === sessionId);
+  const e = journal[sessionId];
+  return e && s ? {
+    ...e, sessionId, sessionDate: s.date,
+    recap: { exercises: [...new Set(s.sets.map((x) => x.exerciseName))], sets: s.sets.length, reps: s.sets.reduce((a, x) => a + x.reps, 0) },
+  } : null;
+};
+export async function listJournal() {
+  await wait();
+  return sessions.filter((s) => journal[s.id]).map((s) => journalDto(s.id));
+}
+export async function getJournal(sessionId) { await wait(100); return journalDto(sessionId); }
+export async function saveJournal(sessionId, { mood, energy, tags, body }) {
+  await wait(200);
+  const s = sessions.find((x) => x.id === sessionId);
+  if (!s.endedAt) throw new Error('Finish the workout before writing about it.');
+  const now = new Date().toISOString();
+  journal[sessionId] = { id: journal[sessionId]?.id || uid(), mood, energy, tags: tags || [], body: (body || '').trim(), createdAt: journal[sessionId]?.createdAt || now, updatedAt: now };
+  s.mood = mood;
+  return journalDto(sessionId);
+}
+export async function deleteJournal(sessionId) {
+  await wait(100);
+  delete journal[sessionId];
+  const s = sessions.find((x) => x.id === sessionId);
+  if (s) s.mood = null;
+  return null;
+}
 export async function getActiveSession() {
   await wait(100);
   return sessions.find((s) => !s.endedAt) || null;

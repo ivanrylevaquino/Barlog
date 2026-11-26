@@ -35,12 +35,14 @@ class WorkoutControllerIntegrationTest {
     @Autowired UserRepository users;
     @Autowired WorkoutSessionRepository sessions;
     @Autowired JwtTokenProvider jwt;
+    @Autowired com.barlog.barlog_back.journal.JournalEntryRepository journals;
 
     private String tokenA;
     private String tokenB;
 
     @BeforeEach
     void setUp() {
+        journals.deleteAll();
         sessions.deleteAll();
         tokenA = "Bearer " + jwt.generateToken(newUser("a"));
         tokenB = "Bearer " + jwt.generateToken(newUser("b"));
