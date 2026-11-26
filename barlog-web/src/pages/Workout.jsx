@@ -1,26 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Minus, Plus, Sparkles, Trash2 } from 'lucide-react';
+import { Sparkles, Trash2 } from 'lucide-react';
 import { api } from '../api';
 import { useAuth } from '../auth.jsx';
 import { entryLabel, fmtLong, progressionsFor, toKg, validateVideo } from '../utils';
 import { PageHead, StatusPill, VideoDrop } from '../components/ui.jsx';
 import SkeletonPlayer from '../components/SkeletonPlayer.jsx';
+import PerSetInputs, { Stepper, checkPerSet } from '../components/PerSetInputs.jsx';
 
-const BLANK = { sets: 3, reps: 8, hold: 30, weight: 0, rpe: null, notes: '' };
-
-function Stepper({ label, value, onChange, step = 1, min = 0, unit }) {
-  return (
-    <div className="field">
-      <span className="label">{label}{unit ? ` (${unit})` : ''}</span>
-      <div className="stepper">
-        <button type="button" aria-label={`Less ${label}`} onClick={() => onChange(Math.max(min, +(value - step).toFixed(1)))}><Minus size={18} /></button>
-        <input type="number" aria-label={label} value={value} onChange={(e) => onChange(Number(e.target.value))} />
-        <button type="button" aria-label={`More ${label}`} onClick={() => onChange(+(value + step).toFixed(1))}><Plus size={18} /></button>
-      </div>
-    </div>
-  );
-}
+const BLANK = { weight: 0, rpe: null, notes: '' };
+const defaultWork = (hold) => ({ sets: 3, same: true, values: hold ? [30, 30, 30] : [8, 8, 8] });
+const single = (v) => ({ sets: 1, same: true, values: [v] });
 
 export default function Workout() {
   const nav = useNavigate();
@@ -33,6 +23,7 @@ export default function Workout() {
   const [exId, setExId] = useState(null);
   const [prog, setProg] = useState('');
   const [form, setForm] = useState(BLANK);
+  const [work, setWork] = useState(defaultWork(false));
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -42,12 +33,15 @@ export default function Workout() {
   const poll = useRef();
 
   const exercise = exercises.find((e) => e.id === exId);
+  const exercisesRef = useRef([]);
+  exercisesRef.current = exercises;
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   useEffect(() => {
     (async () => {
       try {
         const list = await api.getExercises();
+        exercisesRef.current = list;
         setExercises(list);
         pick(list[0]);
         setSession(await api.getActiveSession());
@@ -60,26 +54,22 @@ export default function Workout() {
 
   const pick = (e, keepProg) => {
     if (!e) return;
-    setExId(e.id);
+    setExId((prev) => {
+      const was = exercisesRef.current.find((x) => x.id === prev);
+      if (!was || !!was.hold !== !!e.hold) setWork(defaultWork(e.hold));
+      return e.id;
+    });
     const stages = progressionsFor(e);
     setProg((p) => (keepProg && stages.includes(p) ? p : stages[0]));
   };
 
   const payload = () => ({
-    exerciseId: exId, progression: prog, sets: form.sets,
-    reps: exercise?.hold ? null : form.reps,
-    holdSeconds: exercise?.hold ? Math.round(form.hold) : null,
+    exerciseId: exId, progression: prog, sets: work.sets,
+    perSet: work.values.map((v) => Math.round(v)),
     weightKg: toKg(form.weight, units), rpe: form.rpe, notes: form.notes,
   });
 
-  const check = () => {
-    if (!Number.isInteger(form.sets) || form.sets < 1) return 'Sets must be at least 1.';
-    if (exercise?.hold) { if (!(form.hold >= 1)) return 'Enter how many seconds you held it.'; }
-    else if (!Number.isInteger(form.reps) || form.reps < 1) return 'Enter at least 1 rep.';
-    if (form.reps > 500) return 'Reps cannot exceed 500.';
-    if (form.weight < 0) return 'Added weight cannot be negative.';
-    return '';
-  };
+  const check = () => checkPerSet(work, exercise?.hold) || (form.weight < 0 ? 'Added weight cannot be negative.' : '');
 
   const refresh = async () => setSession(await api.getSession(session.id));
 
@@ -94,9 +84,9 @@ export default function Workout() {
     if (!a || a.status !== 'COMPLETED') return;
     const detected = exercises.find((e) => e.type === a.exercise);
     if (detected) pick(detected, true);
-    if (a.holdSeconds != null) set('hold', Math.max(1, Math.round(a.holdSeconds)));
-    else set('reps', Math.max(1, (a.repsDetected || 0) + (half ? a.partialReps || 0 : 0)));
-    set('sets', 1);
+    // one video = one set; the user adds more sets afterwards if they want
+    if (a.holdSeconds != null) setWork(single(Math.max(1, Math.round(a.holdSeconds))));
+    else setWork(single(Math.max(1, (a.repsDetected || 0) + (half ? a.partialReps || 0 : 0))));
   };
 
   const watch = (setId) => {
@@ -135,7 +125,10 @@ export default function Workout() {
   const toggleHalf = (on) => {
     setCountHalf(on);
     const a = draft?.video?.analysis;
-    if (a?.status === 'COMPLETED' && a.holdSeconds == null) set('reps', Math.max(1, (a.repsDetected || 0) + (on ? a.partialReps || 0 : 0)));
+    if (a?.status === 'COMPLETED' && a.holdSeconds == null) {
+      const reps = Math.max(1, (a.repsDetected || 0) + (on ? a.partialReps || 0 : 0));
+      setWork((w) => ({ ...w, values: w.values.map((v, i) => (i === 0 || w.same ? reps : v)) }));
+    }
   };
 
   const discardDraft = async () => {
@@ -157,6 +150,7 @@ export default function Workout() {
       clearTimeout(poll.current);
       setDraft(null);
       setForm(BLANK);
+      setWork(defaultWork(exercise?.hold));
       setCountHalf(false);
       await refresh();
     } catch (e) {
@@ -259,11 +253,8 @@ export default function Workout() {
             {progressionsFor(exercise).map((p) => <button key={p} className="chip" aria-pressed={p === prog} onClick={() => setProg(p)}>{p}</button>)}
           </div>
         </div>
+        <PerSetInputs hold={!!exercise?.hold} value={work} onChange={setWork} />
         <div className="form-grid">
-          <Stepper label="Sets" value={form.sets} min={1} onChange={(v) => set('sets', v)} />
-          {exercise?.hold
-            ? <Stepper label="Hold per set" unit="seconds" value={form.hold} min={1} step={5} onChange={(v) => set('hold', v)} />
-            : <Stepper label="Reps per set" value={form.reps} min={1} onChange={(v) => set('reps', v)} />}
           <Stepper label="Added weight" unit={units} value={form.weight} step={units === 'lb' ? 5 : 2.5} onChange={(v) => set('weight', v)} />
         </div>
         <div className="field">

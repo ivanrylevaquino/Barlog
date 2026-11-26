@@ -180,8 +180,17 @@ class WorkoutControllerIntegrationTest {
         body(as(tokenA, patch("/api/sets/" + hold.get("id").asText()))
                 .content("{\"exerciseId\":" + push + ",\"progression\":\"Incline\",\"reps\":12}"), 200);
 
-        // volume counts every set: 3x10 + 1x12
-        mvc.perform(as(tokenA, get("/api/progress?range=7"))).andExpect(jsonPath("$.totals.volume").value(42));
+        // different reps per set: 10, 8, 6
+        JsonNode pyramid = body(as(tokenA, post("/api/sessions/" + sid + "/sets"))
+                .content("{\"exerciseId\":" + push + ",\"progression\":\"Standard\",\"perSet\":[10,8,6]}"), 201);
+        assertEquals(3, pyramid.get("sets").asInt());
+        assertEquals(10, pyramid.get("reps").asInt());
+        assertEquals(6, pyramid.get("perSet").get(2).asInt());
+        body(as(tokenA, post("/api/sessions/" + sid + "/sets"))
+                .content("{\"exerciseId\":" + push + ",\"progression\":\"Standard\",\"perSet\":[10,0]}"), 400);
+
+        // volume counts every set: 3x10 + 1x12 + (10+8+6)
+        mvc.perform(as(tokenA, get("/api/progress?range=7"))).andExpect(jsonPath("$.totals.volume").value(66));
     }
 
     @Test

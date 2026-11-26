@@ -207,3 +207,6 @@ textarea.lined:focus { outline: none; box-shadow: none; }
 .skel-toggle { position: absolute; top: 12px; right: 12px; display: inline-flex; gap: 6px; align-items: center; border: 0; background: rgba(20, 30, 27, .7); color: #fff; padding: 6px 12px; border-radius: 999px; font-size: .8rem; }
 .detect { background: var(--accent-soft); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
 .detect svg, .muted svg { vertical-align: -3px; }
+
+.per-set { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px; }
+.per-set input { text-align: center; }

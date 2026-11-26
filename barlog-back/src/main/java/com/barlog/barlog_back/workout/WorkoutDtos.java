@@ -44,6 +44,10 @@ public final class WorkoutDtos {
             @Max(value = 3600, message = "Hold time cannot exceed an hour.")
             Integer holdSeconds,
 
+            /** Reps (or seconds, for holds) of each set. When given, it decides the number of sets. */
+            @Size(max = 50, message = "Sets cannot exceed 50.")
+            List<Integer> perSet,
+
             @DecimalMin(value = "0.0", message = "Added weight cannot be negative.")
             @DecimalMax(value = "300.0", message = "Added weight cannot exceed 300 kg.")
             BigDecimal weightKg,
@@ -69,7 +73,7 @@ public final class WorkoutDtos {
     public record SetDto(UUID id, UUID sessionId, Instant sessionDate, Long exerciseId, String exerciseName,
                          int setNumber, int reps, String progression, BigDecimal weightKg, Integer rpe,
                          String notes, Instant createdAt, VideoService.VideoDto video,
-                         int sets, Integer holdSeconds, ExerciseType exerciseType, boolean hold) {
+                         int sets, Integer holdSeconds, ExerciseType exerciseType, boolean hold, List<Integer> perSet) {
         static SetDto from(ExerciseSet s) {
             return from(s, null);
         }
@@ -80,7 +84,7 @@ public final class WorkoutDtos {
             return new SetDto(s.getSetId(), session.getSessionId(), session.getStartedAt(), ex.getExerciseId(),
                     ex.getName(), s.getSetNumber(), s.getReps(), s.getProgression(), s.getWeightKg(), s.getRpe(),
                     s.getNotes() == null ? "" : s.getNotes(), s.getCreatedAt(), video,
-                    s.getSetsCount(), s.getHoldSeconds(), ex.getType(), ex.isHold());
+                    s.getSetsCount(), s.getHoldSeconds(), ex.getType(), ex.isHold(), s.getPerSetList());
         }
     }
 

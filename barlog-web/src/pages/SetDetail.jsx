@@ -5,6 +5,7 @@ import { useAuth } from '../auth.jsx';
 import { entryLabel, fmtLong, progressionsFor, toDisplayWeight, toKg } from '../utils';
 import { Feedback, StatusPill, VideoBox, VideoDrop, validateVideo } from '../components/ui.jsx';
 import SkeletonPlayer from '../components/SkeletonPlayer.jsx';
+import PerSetInputs, { checkPerSet, fromEntry, resize } from '../components/PerSetInputs.jsx';
 
 export default function SetDetail() {
   const { setId } = useParams();
@@ -44,7 +45,7 @@ export default function SetDetail() {
   }, [set]);
 
   const startEdit = () => {
-    setForm({ exerciseId: set.exerciseId, progression: set.progression, sets: set.sets || 1, reps: set.reps || 1, hold: set.holdSeconds ?? 30,
+    setForm({ exerciseId: set.exerciseId, progression: set.progression, work: fromEntry(set),
               weight: toDisplayWeight(Number(set.weightKg), units), rpe: set.rpe ?? '', notes: set.notes || '' });
     setFormError('');
     setEditing(true);
@@ -54,18 +55,16 @@ export default function SetDetail() {
     e.preventDefault();
     setFormError('');
     const ex = allEx.find((x) => x.id === Number(form.exerciseId)) || exercise;
-    const reps = Number(form.reps), sets = Number(form.sets), hold = Number(form.hold);
     const weight = Number(form.weight), rpe = form.rpe === '' ? null : Number(form.rpe);
-    if (!Number.isInteger(sets) || sets < 1 || sets > 50) return setFormError('Sets must be a whole number from 1 to 50.');
-    if (ex?.hold) { if (!(hold >= 1)) return setFormError('Enter how many seconds you held it.'); }
-    else if (!Number.isInteger(reps) || reps < 1 || reps > 500) return setFormError('Reps must be a whole number from 1 to 500.');
+    const perSetError = checkPerSet(form.work, !!ex?.hold);
+    if (perSetError) return setFormError(perSetError);
     if (Number.isNaN(weight) || weight < 0) return setFormError('Added weight cannot be negative.');
     if (rpe !== null && (!Number.isInteger(rpe) || rpe < 1 || rpe > 10)) return setFormError('RPE must be between 1 and 10.');
     setSaving(true);
     try {
       const updated = await api.updateSet(set.id, {
-        exerciseId: ex?.id ?? set.exerciseId, progression: form.progression, sets,
-        reps: ex?.hold ? null : reps, holdSeconds: ex?.hold ? Math.round(hold) : null,
+        exerciseId: ex?.id ?? set.exerciseId, progression: form.progression, sets: form.work.sets,
+        perSet: form.work.values.map((v) => Math.round(v)),
         weightKg: toKg(weight, units), rpe, notes: form.notes,
       });
       setSet({ ...set, ...updated, video: set.video });
@@ -110,7 +109,8 @@ export default function SetDetail() {
       {set.video?.url ? <SkeletonPlayer src={set.video.url} analysis={set.video.analysis} /> : <VideoBox video={set.video} />}
       <div className="stats">
         <div className="stat"><span className="muted small">Sets</span><b>{set.sets || 1}</b></div>
-        <div className="stat"><span className="muted small">{set.hold ? 'Hold per set' : 'Reps per set'}</span><b>{set.hold ? `${set.holdSeconds}s` : set.reps}</b></div>
+        <div className="stat"><span className="muted small">{set.hold ? 'Seconds per set' : 'Reps per set'}</span>
+          <b style={{ fontSize: '1.2rem', paddingTop: 6 }}>{(set.perSet || [set.hold ? set.holdSeconds : set.reps]).map((v) => (set.hold ? `${v}s` : v)).join(' · ')}</b></div>
         <div className="stat"><span className="muted small">Progression</span><b style={{ fontSize: '1.2rem', paddingTop: 6 }}>{set.progression}</b></div>
         <div className="stat"><span className="muted small">Added weight</span><b>{toDisplayWeight(set.weightKg, units)} {units}</b></div>
       </div>
@@ -125,7 +125,10 @@ export default function SetDetail() {
               <label htmlFor="ed-ex">Exercise</label>
               <select id="ed-ex" value={form.exerciseId} onChange={(e) => {
                 const ex = allEx.find((x) => x.id === Number(e.target.value));
-                setForm({ ...form, exerciseId: Number(e.target.value), progression: progressionsFor(ex)[0] });
+                const was = allEx.find((x) => x.id === Number(form.exerciseId));
+                const work = !!was?.hold === !!ex?.hold ? form.work
+                  : { ...form.work, same: true, values: resize([], form.work.sets, ex?.hold ? 30 : 8) };
+                setForm({ ...form, exerciseId: Number(e.target.value), progression: progressionsFor(ex)[0], work });
               }}>
                 {allEx.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
               </select>
@@ -137,22 +140,9 @@ export default function SetDetail() {
               </select>
             </div>
           </div>
+          <PerSetInputs hold={!!allEx.find((x) => x.id === Number(form.exerciseId))?.hold} value={form.work}
+                        onChange={(work) => setForm({ ...form, work })} />
           <div className="form-grid">
-            <div className="field">
-              <label htmlFor="ed-sets">Sets</label>
-              <input id="ed-sets" type="number" min="1" max="50" value={form.sets} onChange={(e) => setForm({ ...form, sets: e.target.value })} />
-            </div>
-            {allEx.find((x) => x.id === Number(form.exerciseId))?.hold ? (
-              <div className="field">
-                <label htmlFor="ed-hold">Hold per set (seconds)</label>
-                <input id="ed-hold" type="number" min="1" value={form.hold} onChange={(e) => setForm({ ...form, hold: e.target.value })} />
-              </div>
-            ) : (
-              <div className="field">
-                <label htmlFor="ed-reps">Reps per set</label>
-                <input id="ed-reps" type="number" min="1" max="500" value={form.reps} onChange={(e) => setForm({ ...form, reps: e.target.value })} />
-              </div>
-            )}
             <div className="field">
               <label htmlFor="ed-w">Added weight ({units})</label>
               <input id="ed-w" type="number" min="0" step="0.5" value={form.weight} onChange={(e) => setForm({ ...form, weight: e.target.value })} />

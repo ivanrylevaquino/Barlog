@@ -47,6 +47,10 @@ public class ExerciseSet {
     @Column(name = "hold_seconds")
     private Integer holdSeconds;
 
+    /** Reps (or seconds, for holds) of each set, comma-separated, e.g. "10,8,6". Null on old rows. */
+    @Column(name = "per_set", length = 400)
+    private String perSet;
+
     @Column(name = "notes", length = 500)
     private String notes;
 
@@ -80,6 +84,24 @@ public class ExerciseSet {
     public void setSetsCount(Integer setsCount) { this.setsCount = setsCount; }
     public Integer getHoldSeconds() { return holdSeconds; }
     public void setHoldSeconds(Integer holdSeconds) { this.holdSeconds = holdSeconds; }
+
+    /** Reps (or seconds) of each set; old rows fall back to the same value for every set. */
+    public java.util.List<Integer> getPerSetList() {
+        if (perSet != null && !perSet.isBlank()) {
+            return java.util.Arrays.stream(perSet.split(",")).map(String::trim).map(Integer::valueOf).toList();
+        }
+        int each = holdSeconds != null ? holdSeconds : reps;
+        return java.util.Collections.nCopies(getSetsCount(), each);
+    }
+
+    public void setPerSetList(java.util.List<Integer> values) {
+        this.perSet = values.stream().map(String::valueOf).collect(java.util.stream.Collectors.joining(","));
+    }
+
+    /** Total reps across all sets (0 for holds). */
+    public int getTotalReps() {
+        return holdSeconds != null ? 0 : getPerSetList().stream().mapToInt(Integer::intValue).sum();
+    }
     public void setRpe(Integer rpe) { this.rpe = rpe; }
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }

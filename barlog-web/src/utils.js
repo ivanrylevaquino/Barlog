@@ -28,8 +28,10 @@ export const progressionsFor = (ex) => ex?.progressions || PROGRESSIONS[ex?.type
 
 // "3 × 8 · Incline · +5 kg" or "2 × 45s · Forearm"
 export function entryLabel(s, units) {
-  const sets = s.sets || 1;
-  const work = s.hold || s.holdSeconds != null ? `${s.holdSeconds ?? 0}s` : `${s.reps}`;
+  const isHold = s.hold || s.holdSeconds != null;
+  const fmt = (v) => (isHold ? `${v}s` : `${v}`);
+  const values = s.perSet?.length ? s.perSet : Array(s.sets || 1).fill(isHold ? s.holdSeconds ?? 0 : s.reps);
+  const work = values.every((v) => v === values[0]) ? `${values.length} × ${fmt(values[0])}` : values.map(fmt).join(', ');
   const weight = Number(s.weightKg) ? ` · +${toDisplayWeight(Number(s.weightKg), units)} ${units}` : '';
-  return `${sets} × ${work} · ${s.progression}${weight}`;
+  return `${work} · ${s.progression}${weight}`;
 }

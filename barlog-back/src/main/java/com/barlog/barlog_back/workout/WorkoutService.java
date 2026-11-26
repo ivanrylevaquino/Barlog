@@ -201,11 +201,11 @@ public class WorkoutService {
             for (ExerciseSet set : s.getSets()) {
                 if (exerciseId != null && !set.getExercise().getExerciseId().equals(exerciseId)) continue;
                 Day d = byDay.computeIfAbsent(date, k -> new Day(new int[2], new HashSet<>()));
-                d.volMax()[0] += set.getReps() * set.getSetsCount();
+                d.volMax()[0] += set.getTotalReps();
                 d.volMax()[1] = Math.max(d.volMax()[1], set.getReps());
                 d.sessions().add(s.getSessionId());
                 allSessions.add(s.getSessionId());
-                volume += set.getReps() * set.getSetsCount();
+                volume += set.getTotalReps();
                 maxReps = Math.max(maxReps, set.getReps());
             }
         }
@@ -234,16 +234,32 @@ public class WorkoutService {
                     + ". Choose one of: " + String.join(", ", ex.getProgressionList()) + ".");
         }
         set.setProgression(stage);
-        if (ex.isHold()) {
-            if (req.holdSeconds() == null) throw new IllegalArgumentException("Enter how many seconds you held the " + ex.getName() + ".");
-            set.setHoldSeconds(req.holdSeconds());
-            set.setReps(0);
+        // Per-set values win; otherwise the single value is used for every set.
+        List<Integer> values;
+        if (req.perSet() != null && !req.perSet().isEmpty()) {
+            values = req.perSet();
         } else {
-            if (req.reps() == null || req.reps() < 1) throw new IllegalArgumentException("Reps must be at least 1.");
-            set.setHoldSeconds(null);
-            set.setReps(req.reps());
+            Integer each = ex.isHold() ? req.holdSeconds() : req.reps();
+            if (each == null) {
+                throw new IllegalArgumentException(ex.isHold()
+                        ? "Enter how many seconds you held the " + ex.getName() + "."
+                        : "Reps must be at least 1.");
+            }
+            values = java.util.Collections.nCopies(req.sets() == null ? 1 : req.sets(), each);
         }
-        set.setSetsCount(req.sets() == null ? 1 : req.sets());
+        int min = 1, max = ex.isHold() ? 3600 : 500;
+        for (Integer v : values) {
+            if (v == null || v < min || v > max) {
+                throw new IllegalArgumentException(ex.isHold()
+                        ? "Each set's hold must be between 1 and 3600 seconds."
+                        : "Each set's reps must be between 1 and 500.");
+            }
+        }
+        int best = values.stream().mapToInt(Integer::intValue).max().orElse(0);
+        set.setPerSetList(values);
+        set.setSetsCount(values.size());
+        set.setHoldSeconds(ex.isHold() ? best : null);
+        set.setReps(ex.isHold() ? 0 : best);
         set.setWeightKg(req.weightKg() == null ? BigDecimal.ZERO : req.weightKg().setScale(2, RoundingMode.HALF_UP));
         set.setRpe(req.rpe());
         set.setNotes(clean(req.notes()));
